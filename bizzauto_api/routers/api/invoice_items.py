@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import InvoiceItem
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import InvoiceItem as PydanticInvoiceItem
+from crud import (
+    get_invoice_item, get_invoice_items, create_invoice_item, update_invoice_item, delete_invoice_item
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[InvoiceItem])
-async def get_all_invoice_items():
-    try:
-        response = supabase.table('invoice_items').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticInvoiceItem])
+def read_invoice_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    invoice_items = get_invoice_items(db, skip=skip, limit=limit)
+    return invoice_items
 
-@router.get("/{id}", response_model=InvoiceItem)
-async def get_invoice_item_by_id(id: UUID):
-    try:
-        response = supabase.table('invoice_items').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Invoice item not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{invoice_item_id}", response_model=PydanticInvoiceItem)
+def read_invoice_item(invoice_item_id: UUID, db: Session = Depends(get_db)):
+    db_invoice_item = get_invoice_item(db, invoice_item_id=invoice_item_id)
+    if db_invoice_item is None:
+        raise HTTPException(status_code=404, detail="Invoice item not found")
+    return db_invoice_item
 
-@router.post("/", response_model=InvoiceItem)
-async def create_invoice_item(invoice_item: InvoiceItem):
-    try:
-        response = supabase.table('invoice_items').insert(invoice_item.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticInvoiceItem)
+def create_invoice_item_route(invoice_item: PydanticInvoiceItem, db: Session = Depends(get_db)):
+    return create_invoice_item(db=db, invoice_item=invoice_item)
 
-@router.put("/{id}", response_model=InvoiceItem)
-async def update_invoice_item(id: UUID, invoice_item: InvoiceItem):
-    try:
-        response = supabase.table('invoice_items').update(invoice_item.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{invoice_item_id}", response_model=PydanticInvoiceItem)
+def update_invoice_item_route(invoice_item_id: UUID, invoice_item: PydanticInvoiceItem, db: Session = Depends(get_db)):
+    db_invoice_item = update_invoice_item(db=db, invoice_item_id=invoice_item_id, invoice_item=invoice_item)
+    if db_invoice_item is None:
+        raise HTTPException(status_code=404, detail="Invoice item not found")
+    return db_invoice_item
 
-@router.delete("/{id}")
-async def delete_invoice_item(id: UUID):
-    try:
-        response = supabase.table('invoice_items').delete().eq('id', str(id)).execute()
-        return {"message": "Invoice item deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{invoice_item_id}")
+def delete_invoice_item_route(invoice_item_id: UUID, db: Session = Depends(get_db)):
+    db_invoice_item = delete_invoice_item(db=db, invoice_item_id=invoice_item_id)
+    if db_invoice_item is None:
+        raise HTTPException(status_code=404, detail="Invoice item not found")
+    return {"message": "Invoice item deleted successfully"}

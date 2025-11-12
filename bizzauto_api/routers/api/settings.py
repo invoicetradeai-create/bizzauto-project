@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import Setting
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import Setting as PydanticSetting
+from crud import (
+    get_setting, get_settings, create_setting, update_setting, delete_setting
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[Setting])
-async def get_all_settings():
-    try:
-        response = supabase.table('settings').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticSetting])
+def read_settings(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    settings = get_settings(db, skip=skip, limit=limit)
+    return settings
 
-@router.get("/{id}", response_model=Setting)
-async def get_setting_by_id(id: UUID):
-    try:
-        response = supabase.table('settings').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Setting not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{setting_id}", response_model=PydanticSetting)
+def read_setting(setting_id: UUID, db: Session = Depends(get_db)):
+    db_setting = get_setting(db, setting_id=setting_id)
+    if db_setting is None:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    return db_setting
 
-@router.post("/", response_model=Setting)
-async def create_setting(setting: Setting):
-    try:
-        response = supabase.table('settings').insert(setting.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticSetting)
+def create_setting_route(setting: PydanticSetting, db: Session = Depends(get_db)):
+    return create_setting(db=db, setting=setting)
 
-@router.put("/{id}", response_model=Setting)
-async def update_setting(id: UUID, setting: Setting):
-    try:
-        response = supabase.table('settings').update(setting.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{setting_id}", response_model=PydanticSetting)
+def update_setting_route(setting_id: UUID, setting: PydanticSetting, db: Session = Depends(get_db)):
+    db_setting = update_setting(db=db, setting_id=setting_id, setting=setting)
+    if db_setting is None:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    return db_setting
 
-@router.delete("/{id}")
-async def delete_setting(id: UUID):
-    try:
-        response = supabase.table('settings').delete().eq('id', str(id)).execute()
-        return {"message": "Setting deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{setting_id}")
+def delete_setting_route(setting_id: UUID, db: Session = Depends(get_db)):
+    db_setting = delete_setting(db=db, setting_id=setting_id)
+    if db_setting is None:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    return {"message": "Setting deleted successfully"}

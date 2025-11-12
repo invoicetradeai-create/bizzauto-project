@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import Lead
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import Lead as PydanticLead
+from crud import (
+    get_lead, get_leads, create_lead, update_lead, delete_lead
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[Lead])
-async def get_all_leads():
-    try:
-        response = supabase.table('leads').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticLead])
+def read_leads(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    leads = get_leads(db, skip=skip, limit=limit)
+    return leads
 
-@router.get("/{id}", response_model=Lead)
-async def get_lead_by_id(id: UUID):
-    try:
-        response = supabase.table('leads').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Lead not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{lead_id}", response_model=PydanticLead)
+def read_lead(lead_id: UUID, db: Session = Depends(get_db)):
+    db_lead = get_lead(db, lead_id=lead_id)
+    if db_lead is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return db_lead
 
-@router.post("/", response_model=Lead)
-async def create_lead(lead: Lead):
-    try:
-        response = supabase.table('leads').insert(lead.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticLead)
+def create_lead_route(lead: PydanticLead, db: Session = Depends(get_db)):
+    return create_lead(db=db, lead=lead)
 
-@router.put("/{id}", response_model=Lead)
-async def update_lead(id: UUID, lead: Lead):
-    try:
-        response = supabase.table('leads').update(lead.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{lead_id}", response_model=PydanticLead)
+def update_lead_route(lead_id: UUID, lead: PydanticLead, db: Session = Depends(get_db)):
+    db_lead = update_lead(db=db, lead_id=lead_id, lead=lead)
+    if db_lead is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return db_lead
 
-@router.delete("/{id}")
-async def delete_lead(id: UUID):
-    try:
-        response = supabase.table('leads').delete().eq('id', str(id)).execute()
-        return {"message": "Lead deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{lead_id}")
+def delete_lead_route(lead_id: UUID, db: Session = Depends(get_db)):
+    db_lead = delete_lead(db=db, lead_id=lead_id)
+    if db_lead is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return {"message": "Lead deleted successfully"}

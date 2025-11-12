@@ -6,6 +6,9 @@ from routers.api import (
     invoice_items, purchases, purchase_items, expenses, leads, 
     whatsapp_logs, uploaded_docs, settings
 )
+from database import engine
+import sql_models
+import logging
 
 app = FastAPI()
 
@@ -19,6 +22,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        sql_models.Base.metadata.create_all(bind=engine)
+        logging.info("Database tables created successfully")
+    except Exception as e:
+        logging.error(f"Database initialization failed: {str(e)}")
 
 app.include_router(dashboard.router, prefix="/dashboard")
 app.include_router(tables.router, prefix="/tables")
@@ -39,4 +50,16 @@ app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+    return {
+        "message": "BizzAuto API",
+        "version": "1.0.0",
+        "status": "running"
+    }
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "ok",
+        "message": "API is healthy",
+        "version": "1.0.0"
+    }

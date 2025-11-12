@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import Supplier
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import Supplier as PydanticSupplier
+from crud import (
+    get_supplier, get_suppliers, create_supplier, update_supplier, delete_supplier
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[Supplier])
-async def get_all_suppliers():
-    try:
-        response = supabase.table('suppliers').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticSupplier])
+def read_suppliers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    suppliers = get_suppliers(db, skip=skip, limit=limit)
+    return suppliers
 
-@router.get("/{id}", response_model=Supplier)
-async def get_supplier_by_id(id: UUID):
-    try:
-        response = supabase.table('suppliers').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Supplier not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{supplier_id}", response_model=PydanticSupplier)
+def read_supplier(supplier_id: UUID, db: Session = Depends(get_db)):
+    db_supplier = get_supplier(db, supplier_id=supplier_id)
+    if db_supplier is None:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+    return db_supplier
 
-@router.post("/", response_model=Supplier)
-async def create_supplier(supplier: Supplier):
-    try:
-        response = supabase.table('suppliers').insert(supplier.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticSupplier)
+def create_supplier_route(supplier: PydanticSupplier, db: Session = Depends(get_db)):
+    return create_supplier(db=db, supplier=supplier)
 
-@router.put("/{id}", response_model=Supplier)
-async def update_supplier(id: UUID, supplier: Supplier):
-    try:
-        response = supabase.table('suppliers').update(supplier.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{supplier_id}", response_model=PydanticSupplier)
+def update_supplier_route(supplier_id: UUID, supplier: PydanticSupplier, db: Session = Depends(get_db)):
+    db_supplier = update_supplier(db=db, supplier_id=supplier_id, supplier=supplier)
+    if db_supplier is None:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+    return db_supplier
 
-@router.delete("/{id}")
-async def delete_supplier(id: UUID):
-    try:
-        response = supabase.table('suppliers').delete().eq('id', str(id)).execute()
-        return {"message": "Supplier deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{supplier_id}")
+def delete_supplier_route(supplier_id: UUID, db: Session = Depends(get_db)):
+    db_supplier = delete_supplier(db=db, supplier_id=supplier_id)
+    if db_supplier is None:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+    return {"message": "Supplier deleted successfully"}

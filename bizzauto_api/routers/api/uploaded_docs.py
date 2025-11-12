@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import UploadedDoc
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import UploadedDoc as PydanticUploadedDoc
+from crud import (
+    get_uploaded_doc, get_uploaded_docs, create_uploaded_doc, update_uploaded_doc, delete_uploaded_doc
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[UploadedDoc])
-async def get_all_uploaded_docs():
-    try:
-        response = supabase.table('uploaded_docs').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticUploadedDoc])
+def read_uploaded_docs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    uploaded_docs = get_uploaded_docs(db, skip=skip, limit=limit)
+    return uploaded_docs
 
-@router.get("/{id}", response_model=UploadedDoc)
-async def get_uploaded_doc_by_id(id: UUID):
-    try:
-        response = supabase.table('uploaded_docs').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Uploaded doc not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{uploaded_doc_id}", response_model=PydanticUploadedDoc)
+def read_uploaded_doc(uploaded_doc_id: UUID, db: Session = Depends(get_db)):
+    db_uploaded_doc = get_uploaded_doc(db, uploaded_doc_id=uploaded_doc_id)
+    if db_uploaded_doc is None:
+        raise HTTPException(status_code=404, detail="Uploaded doc not found")
+    return db_uploaded_doc
 
-@router.post("/", response_model=UploadedDoc)
-async def create_uploaded_doc(uploaded_doc: UploadedDoc):
-    try:
-        response = supabase.table('uploaded_docs').insert(uploaded_doc.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticUploadedDoc)
+def create_uploaded_doc_route(uploaded_doc: PydanticUploadedDoc, db: Session = Depends(get_db)):
+    return create_uploaded_doc(db=db, uploaded_doc=uploaded_doc)
 
-@router.put("/{id}", response_model=UploadedDoc)
-async def update_uploaded_doc(id: UUID, uploaded_doc: UploadedDoc):
-    try:
-        response = supabase.table('uploaded_docs').update(uploaded_doc.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{uploaded_doc_id}", response_model=PydanticUploadedDoc)
+def update_uploaded_doc_route(uploaded_doc_id: UUID, uploaded_doc: PydanticUploadedDoc, db: Session = Depends(get_db)):
+    db_uploaded_doc = update_uploaded_doc(db=db, uploaded_doc_id=uploaded_doc_id, uploaded_doc=uploaded_doc)
+    if db_uploaded_doc is None:
+        raise HTTPException(status_code=404, detail="Uploaded doc not found")
+    return db_uploaded_doc
 
-@router.delete("/{id}")
-async def delete_uploaded_doc(id: UUID):
-    try:
-        response = supabase.table('uploaded_docs').delete().eq('id', str(id)).execute()
-        return {"message": "Uploaded doc deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{uploaded_doc_id}")
+def delete_uploaded_doc_route(uploaded_doc_id: UUID, db: Session = Depends(get_db)):
+    db_uploaded_doc = delete_uploaded_doc(db=db, uploaded_doc_id=uploaded_doc_id)
+    if db_uploaded_doc is None:
+        raise HTTPException(status_code=404, detail="Uploaded doc not found")
+    return {"message": "Uploaded doc deleted successfully"}

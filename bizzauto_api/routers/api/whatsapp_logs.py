@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import WhatsappLog
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import WhatsappLog as PydanticWhatsappLog
+from crud import (
+    get_whatsapp_log, get_whatsapp_logs, create_whatsapp_log, update_whatsapp_log, delete_whatsapp_log
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[WhatsappLog])
-async def get_all_whatsapp_logs():
-    try:
-        response = supabase.table('whatsapp_logs').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticWhatsappLog])
+def read_whatsapp_logs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    whatsapp_logs = get_whatsapp_logs(db, skip=skip, limit=limit)
+    return whatsapp_logs
 
-@router.get("/{id}", response_model=WhatsappLog)
-async def get_whatsapp_log_by_id(id: UUID):
-    try:
-        response = supabase.table('whatsapp_logs').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Whatsapp log not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{whatsapp_log_id}", response_model=PydanticWhatsappLog)
+def read_whatsapp_log(whatsapp_log_id: UUID, db: Session = Depends(get_db)):
+    db_whatsapp_log = get_whatsapp_log(db, whatsapp_log_id=whatsapp_log_id)
+    if db_whatsapp_log is None:
+        raise HTTPException(status_code=404, detail="Whatsapp log not found")
+    return db_whatsapp_log
 
-@router.post("/", response_model=WhatsappLog)
-async def create_whatsapp_log(whatsapp_log: WhatsappLog):
-    try:
-        response = supabase.table('whatsapp_logs').insert(whatsapp_log.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticWhatsappLog)
+def create_whatsapp_log_route(whatsapp_log: PydanticWhatsappLog, db: Session = Depends(get_db)):
+    return create_whatsapp_log(db=db, whatsapp_log=whatsapp_log)
 
-@router.put("/{id}", response_model=WhatsappLog)
-async def update_whatsapp_log(id: UUID, whatsapp_log: WhatsappLog):
-    try:
-        response = supabase.table('whatsapp_logs').update(whatsapp_log.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{whatsapp_log_id}", response_model=PydanticWhatsappLog)
+def update_whatsapp_log_route(whatsapp_log_id: UUID, whatsapp_log: PydanticWhatsappLog, db: Session = Depends(get_db)):
+    db_whatsapp_log = update_whatsapp_log(db=db, whatsapp_log_id=whatsapp_log_id, whatsapp_log=whatsapp_log)
+    if db_whatsapp_log is None:
+        raise HTTPException(status_code=404, detail="Whatsapp log not found")
+    return db_whatsapp_log
 
-@router.delete("/{id}")
-async def delete_whatsapp_log(id: UUID):
-    try:
-        response = supabase.table('whatsapp_logs').delete().eq('id', str(id)).execute()
-        return {"message": "Whatsapp log deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{whatsapp_log_id}")
+def delete_whatsapp_log_route(whatsapp_log_id: UUID, db: Session = Depends(get_db)):
+    db_whatsapp_log = delete_whatsapp_log(db=db, whatsapp_log_id=whatsapp_log_id)
+    if db_whatsapp_log is None:
+        raise HTTPException(status_code=404, detail="Whatsapp log not found")
+    return {"message": "Whatsapp log deleted successfully"}

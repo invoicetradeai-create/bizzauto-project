@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import Client
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import Client as PydanticClient
+from crud import (
+    get_client, get_clients, create_client, update_client, delete_client
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[Client])
-async def get_all_clients():
-    try:
-        response = supabase.table('clients').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticClient])
+def read_clients(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    clients = get_clients(db, skip=skip, limit=limit)
+    return clients
 
-@router.get("/{id}", response_model=Client)
-async def get_client_by_id(id: UUID):
-    try:
-        response = supabase.table('clients').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Client not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{client_id}", response_model=PydanticClient)
+def read_client(client_id: UUID, db: Session = Depends(get_db)):
+    db_client = get_client(db, client_id=client_id)
+    if db_client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return db_client
 
-@router.post("/", response_model=Client)
-async def create_client(client: Client):
-    try:
-        response = supabase.table('clients').insert(client.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticClient)
+def create_client_route(client: PydanticClient, db: Session = Depends(get_db)):
+    return create_client(db=db, client=client)
 
-@router.put("/{id}", response_model=Client)
-async def update_client(id: UUID, client: Client):
-    try:
-        response = supabase.table('clients').update(client.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{client_id}", response_model=PydanticClient)
+def update_client_route(client_id: UUID, client: PydanticClient, db: Session = Depends(get_db)):
+    db_client = update_client(db=db, client_id=client_id, client=client)
+    if db_client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return db_client
 
-@router.delete("/{id}")
-async def delete_client(id: UUID):
-    try:
-        response = supabase.table('clients').delete().eq('id', str(id)).execute()
-        return {"message": "Client deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{client_id}")
+def delete_client_route(client_id: UUID, db: Session = Depends(get_db)):
+    db_client = delete_client(db=db, client_id=client_id)
+    if db_client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return {"message": "Client deleted successfully"}

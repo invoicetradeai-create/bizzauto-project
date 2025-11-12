@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import Product
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import Product as PydanticProduct
+from crud import (
+    get_product, get_products, create_product, update_product, delete_product
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[Product])
-async def get_all_products():
-    try:
-        response = supabase.table('products').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticProduct])
+def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    products = get_products(db, skip=skip, limit=limit)
+    return products
 
-@router.get("/{id}", response_model=Product)
-async def get_product_by_id(id: UUID):
-    try:
-        response = supabase.table('products').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Product not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{product_id}", response_model=PydanticProduct)
+def read_product(product_id: UUID, db: Session = Depends(get_db)):
+    db_product = get_product(db, product_id=product_id)
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return db_product
 
-@router.post("/", response_model=Product)
-async def create_product(product: Product):
-    try:
-        response = supabase.table('products').insert(product.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticProduct)
+def create_product_route(product: PydanticProduct, db: Session = Depends(get_db)):
+    return create_product(db=db, product=product)
 
-@router.put("/{id}", response_model=Product)
-async def update_product(id: UUID, product: Product):
-    try:
-        response = supabase.table('products').update(product.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{product_id}", response_model=PydanticProduct)
+def update_product_route(product_id: UUID, product: PydanticProduct, db: Session = Depends(get_db)):
+    db_product = update_product(db=db, product_id=product_id, product=product)
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return db_product
 
-@router.delete("/{id}")
-async def delete_product(id: UUID):
-    try:
-        response = supabase.table('products').delete().eq('id', str(id)).execute()
-        return {"message": "Product deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{product_id}")
+def delete_product_route(product_id: UUID, db: Session = Depends(get_db)):
+    db_product = delete_product(db=db, product_id=product_id)
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"message": "Product deleted successfully"}

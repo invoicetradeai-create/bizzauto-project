@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import Company
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import Company as PydanticCompany
+from crud import (
+    get_company, get_companies, create_company, update_company, delete_company
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[Company])
-async def get_all_companies():
-    try:
-        response = supabase.table('companies').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticCompany])
+def read_companies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    companies = get_companies(db, skip=skip, limit=limit)
+    return companies
 
-@router.get("/{id}", response_model=Company)
-async def get_company_by_id(id: UUID):
-    try:
-        response = supabase.table('companies').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Company not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{company_id}", response_model=PydanticCompany)
+def read_company(company_id: UUID, db: Session = Depends(get_db)):
+    db_company = get_company(db, company_id=company_id)
+    if db_company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return db_company
 
-@router.post("/", response_model=Company)
-async def create_company(company: Company):
-    try:
-        response = supabase.table('companies').insert(company.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticCompany)
+def create_company_route(company: PydanticCompany, db: Session = Depends(get_db)):
+    return create_company(db=db, company=company)
 
-@router.put("/{id}", response_model=Company)
-async def update_company(id: UUID, company: Company):
-    try:
-        response = supabase.table('companies').update(company.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{company_id}", response_model=PydanticCompany)
+def update_company_route(company_id: UUID, company: PydanticCompany, db: Session = Depends(get_db)):
+    db_company = update_company(db=db, company_id=company_id, company=company)
+    if db_company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return db_company
 
-@router.delete("/{id}")
-async def delete_company(id: UUID):
-    try:
-        response = supabase.table('companies').delete().eq('id', str(id)).execute()
-        return {"message": "Company deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{company_id}")
+def delete_company_route(company_id: UUID, db: Session = Depends(get_db)):
+    db_company = delete_company(db=db, company_id=company_id)
+    if db_company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return {"message": "Company deleted successfully"}

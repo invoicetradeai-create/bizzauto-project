@@ -1,49 +1,42 @@
-from fastapi import APIRouter, HTTPException, Body
-from db import supabase
-from models import PurchaseItem
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
+from models import PurchaseItem as PydanticPurchaseItem
+from crud import (
+    get_purchase_item, get_purchase_items, create_purchase_item, update_purchase_item, delete_purchase_item
+)
+
 router = APIRouter()
 
-@router.get("/", response_model=List[PurchaseItem])
-async def get_all_purchase_items():
-    try:
-        response = supabase.table('purchase_items').select('*').execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=List[PydanticPurchaseItem])
+def read_purchase_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    purchase_items = get_purchase_items(db, skip=skip, limit=limit)
+    return purchase_items
 
-@router.get("/{id}", response_model=PurchaseItem)
-async def get_purchase_item_by_id(id: UUID):
-    try:
-        response = supabase.table('purchase_items').select('*').eq('id', str(id)).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Purchase item not found")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/{purchase_item_id}", response_model=PydanticPurchaseItem)
+def read_purchase_item(purchase_item_id: UUID, db: Session = Depends(get_db)):
+    db_purchase_item = get_purchase_item(db, purchase_item_id=purchase_item_id)
+    if db_purchase_item is None:
+        raise HTTPException(status_code=404, detail="Purchase item not found")
+    return db_purchase_item
 
-@router.post("/", response_model=PurchaseItem)
-async def create_purchase_item(purchase_item: PurchaseItem):
-    try:
-        response = supabase.table('purchase_items').insert(purchase_item.dict()).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/", response_model=PydanticPurchaseItem)
+def create_purchase_item_route(purchase_item: PydanticPurchaseItem, db: Session = Depends(get_db)):
+    return create_purchase_item(db=db, purchase_item=purchase_item)
 
-@router.put("/{id}", response_model=PurchaseItem)
-async def update_purchase_item(id: UUID, purchase_item: PurchaseItem):
-    try:
-        response = supabase.table('purchase_items').update(purchase_item.dict(exclude_unset=True)).eq('id', str(id)).execute()
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.put("/{purchase_item_id}", response_model=PydanticPurchaseItem)
+def update_purchase_item_route(purchase_item_id: UUID, purchase_item: PydanticPurchaseItem, db: Session = Depends(get_db)):
+    db_purchase_item = update_purchase_item(db=db, purchase_item_id=purchase_item_id, purchase_item=purchase_item)
+    if db_purchase_item is None:
+        raise HTTPException(status_code=404, detail="Purchase item not found")
+    return db_purchase_item
 
-@router.delete("/{id}")
-async def delete_purchase_item(id: UUID):
-    try:
-        response = supabase.table('purchase_items').delete().eq('id', str(id)).execute()
-        return {"message": "Purchase item deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.delete("/{purchase_item_id}")
+def delete_purchase_item_route(purchase_item_id: UUID, db: Session = Depends(get_db)):
+    db_purchase_item = delete_purchase_item(db=db, purchase_item_id=purchase_item_id)
+    if db_purchase_item is None:
+        raise HTTPException(status_code=404, detail="Purchase item not found")
+    return {"message": "Purchase item deleted successfully"}
