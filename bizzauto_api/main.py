@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import dashboard, tables
 from routers.api import (
-    companies, clients, users, suppliers, products, invoices, 
-    invoice_items, purchases, purchase_items, expenses, leads, 
+    companies, clients, users, suppliers, products, invoices,
+    invoice_items, purchases, purchase_items, expenses, leads,
     whatsapp_logs, uploaded_docs, settings
 )
 from database import engine
@@ -12,17 +12,22 @@ import logging
 
 app = FastAPI()
 
-# For production, you should restrict this to your frontend's actual domain
-origins = ["*"]
+# ✅ Frontend URLs allowed during development
+origins = [
+    "http://localhost:3000",  # for Next.js frontend
+    "http://localhost:5173",  # for Vite React frontend
+]
 
+# ✅ Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins,          # restrict to known dev URLs
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],            # allow GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],            # allow all headers (esp. Authorization)
 )
 
+# ✅ Create database tables on startup
 @app.on_event("startup")
 async def startup_event():
     try:
@@ -31,6 +36,7 @@ async def startup_event():
     except Exception as e:
         logging.error(f"Database initialization failed: {str(e)}")
 
+# ✅ Include all routers
 app.include_router(dashboard.router, prefix="/dashboard")
 app.include_router(tables.router, prefix="/tables")
 app.include_router(companies.router, prefix="/api/companies", tags=["companies"])
@@ -48,6 +54,7 @@ app.include_router(whatsapp_logs.router, prefix="/api/whatsapp_logs", tags=["wha
 app.include_router(uploaded_docs.router, prefix="/api/uploaded_docs", tags=["uploaded_docs"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 
+# ✅ Root endpoint (for testing)
 @app.get("/")
 def read_root():
     return {
@@ -56,6 +63,7 @@ def read_root():
         "status": "running"
     }
 
+# ✅ Health check endpoint
 @app.get("/health")
 def health_check():
     return {
