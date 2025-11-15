@@ -4,7 +4,7 @@ from routers import dashboard, tables
 from routers.api import (
     companies, clients, users, suppliers, products, invoices,
     invoice_items, purchases, purchase_items, expenses, leads,
-    whatsapp_logs, uploaded_docs, settings
+    whatsapp_logs, uploaded_docs, settings, meta_whatsapp
 )
 from database import engine
 import sql_models
@@ -21,7 +21,7 @@ origins = [
 # ✅ Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,          # restrict to known dev URLs
+    allow_origins=["*"],          # Allow all origins for debugging
     allow_credentials=True,
     allow_methods=["*"],            # allow GET, POST, PUT, DELETE, etc.
     allow_headers=["*"],            # allow all headers (esp. Authorization)
@@ -53,6 +53,7 @@ app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(whatsapp_logs.router, prefix="/api/whatsapp_logs", tags=["whatsapp_logs"])
 app.include_router(uploaded_docs.router, prefix="/api/uploaded_docs", tags=["uploaded_docs"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+app.include_router(meta_whatsapp.router, prefix="/api", tags=["meta_whatsapp"])
 
 # ✅ Root endpoint (for testing)
 @app.get("/")

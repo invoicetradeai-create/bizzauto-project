@@ -1,38 +1,50 @@
-from fastapi import APIRouter
-from db import supabase
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from database import get_db
+from crud import get_invoices, get_clients, get_products, get_whatsapp_logs
+from datetime import datetime
 
 router = APIRouter()
 
-@router.get("/analytics")
-async def get_analytics():
-    return {"message": "Analytics data"}
+@router.get("/summary")
+async def get_dashboard_summary(db: Session = Depends(get_db)):
+    invoices = get_invoices(db, skip=0, limit=1000)
+    clients = get_clients(db, skip=0, limit=1000)
+    products = get_products(db, skip=0, limit=1000)
+    whatsapp_logs = get_whatsapp_logs(db, skip=0, limit=1000)
 
-@router.get("/crm")
-async def get_crm():
-    return {"message": "CRM data"}
+    total_revenue = sum(i.total_amount for i in invoices if i.payment_status == 'paid')
+    pending_payments = sum(i.total_amount for i in invoices if i.payment_status != 'paid')
+    active_clients = len(clients)
+    low_stock_items = sum(1 for p in products if p.stock_quantity < p.low_stock_alert)
+    messages_sent = len(whatsapp_logs)
 
-@router.get("/dashboard")
-async def get_dashboard():
-    response = supabase.table('dashboard_items').select('*').execute()
-    return response.data
+    revenue_trend = {}
+    for invoice in invoices:
+        month = invoice.invoice_date.strftime("%b")
+        if month not in revenue_trend:
+            revenue_trend[month] = 0
+        revenue_trend[month] += invoice.total_amount
 
-@router.post("/dashboard/add")
-async def add_dashboard_item(item: dict):
-    response = supabase.table('dashboard_items').insert(item).execute()
-    return response.data
+    revenue_trend_list = [{"month": m, "value": v} for m, v in revenue_trend.items()]
 
-@router.get("/inventory")
-async def get_inventory():
-    return {"message": "Inventory data"}
+    payment_status = {}
+    for invoice in invoices:
+        status = invoice.payment_status
+        if status not in payment_status:
+            payment_status[status] = 0
+        payment_status[status] += 1
+        
+    payment_status_list = [{"name": s, "value": v} for s, v in payment_status.items()]
 
-@router.get("/invoices")
-async def get_invoices():
-    return {"message": "Invoices data"}
-
-@router.get("/settings")
-async def get_settings():
-    return {"message": "Settings data"}
-
-@router.get("/whatsapp")
-async def get_whatsapp():
-    return {"message": "WhatsApp data"}
+    return {
+        "stats": {
+            "total_revenue": total_revenue,
+            "pending_payments": pending_payments,
+            "active_clients": active_clients,
+            "low_stock_items": low_stock_items,
+            "messages_sent": messages_sent,
+        },
+        "revenue_trend": revenue_trend_list,
+        "payment_status": payment_status_list,
+    }
