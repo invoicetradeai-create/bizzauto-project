@@ -89,20 +89,17 @@ export default function WhatsAppPage() {
 
     setIsSending(true);
     try {
-      const response = await fetch('/api/send-meta-whatsapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: selectedContact.phone, body: messageText }),
+      const response = await apiClient.post('/api/send-meta-whatsapp', {
+        to: selectedContact.phone,
+        body: messageText,
       });
 
-      const result = await response.json();
-
-      if (response.ok) {
+      if (response.data) {
         toast({ title: "Success", description: "Message sent successfully!" });
         setMessageText(""); // Clear input on success
         fetchData(); // Refresh stats to reflect new message count
       } else {
-        throw new Error(result.detail || "An unknown error occurred");
+        throw new Error(response.error || "An unknown error occurred");
       }
     } catch (err) {
       const errorDetail = err instanceof Error ? err.message : String(err);
