@@ -1,0 +1,175 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import AuthCard from "@/components/AuthCard";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function SignIn() {
+  const router = useRouter();
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "",
+    remember: false,
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("handleSubmit called");
+    console.log("Email:", formData.email);
+    console.log("Password:", formData.password);
+
+    if (!formData.email || !formData.password) {
+      toast({
+        title: "Missing Fields",
+        description: "Please enter email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!validEmail.test(formData.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    console.log("Supabase auth data:", data);
+    console.log("Supabase auth error:", error);
+
+    if (error) {
+      if (error.message === "Email not confirmed") {
+        toast({
+          title: "Email Not Verified",
+          description: "Please confirm your email before logging in.",
+          variant: "destructive",
+        });
+
+        await supabase.auth.resend({
+          type: "signup",
+          email: formData.email,
+        });
+        console.log("Resend request sent for:", formData.email);
+      } else {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+      setLoading(false);
+      return;
+    }
+
+    toast({
+      title: "Welcome Back!",
+      description: "Signed in successfully",
+    });
+
+    if (formData.remember) {
+      localStorage.setItem("user_email", formData.email);
+      localStorage.setItem("user_name", formData.name || "User");
+      localStorage.setItem("user_role", formData.role || "User");
+    } else {
+      localStorage.removeItem("user_email");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
+    }
+
+    const firstLetter = formData.email.charAt(0).toUpperCase();
+    localStorage.setItem("user_avatar", firstLetter);
+
+    console.log("Redirecting to dashboard...");
+    router.push("/dashboard");
+    setLoading(false);
+  };
+
+  return (
+    <AuthCard
+      title="BizzAuto"
+      description="AI-Powered Business Automation Platform"
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Email */}
+        <div className="space-y-1">
+          <Label>Email</Label>
+          <Input
+            type="email"
+            placeholder="trader@example.com"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          />
+        </div>
+
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            id="password"
+            placeholder="Enter your password"
+            value={formData.password}
+            onChange={(e) =>
+              setFormData({ ...formData, password: e.target.value })
+            }
+            className="w-full h-11 px-3 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Remember Me */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            checked={formData.remember}
+            onCheckedChange={(val) =>
+              setFormData({ ...formData, remember: val as boolean })
+            }
+          />
+          <Label className="cursor-pointer">Remember me</Label>
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+          disabled={loading}
+        >
+          {loading ? "Signing in..." : "Sign In"}
+        </Button>
+
+        <div className="text-sm text-center text-gray-500">
+          Don’t have an account?{" "}
+          <button
+            type="button"
+            onClick={() => router.push("/signUp")}
+            className="text-blue-600 font-semibold hover:underline"
+          >
+            Sign Up
+          </button>
+        </div>
+
+        <div className="p-3 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-center text-xs">
+          Demo: any email / any password
+        </div>
+      </form>
+    </AuthCard>
+  );
+}
