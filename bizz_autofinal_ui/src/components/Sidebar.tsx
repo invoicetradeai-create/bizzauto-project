@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, LayoutDashboard, Users, FileText, Package, MessageSquare, BarChart3, Settings, LogOut, Receipt } from "lucide-react";
+import { Sparkles, LayoutDashboard, Users, FileText, Package, MessageSquare, BarChart3, Settings, LogOut, Receipt, ScanLine } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { UUID } from "crypto";
 
@@ -15,6 +15,7 @@ const menuItems = [
   { name: "Invoices", icon: FileText, path: "/invoices" },
   { name: "Inventory", icon: Package, path: "/inventory" },
   { name: "Expense", icon: Receipt, path: "/expense" },
+  { name: "OCR Upload", icon: ScanLine, path: "/ocr" },
   { name: "WhatsApp", icon: MessageSquare, path: "/whatsapp" },
   { name: "Analytics", icon: BarChart3, path: "/analytics" },
   { name: "Settings", icon: Settings, path: "/settings" },

@@ -4,7 +4,7 @@ from routers import dashboard, tables
 from routers.api import (
     companies, clients, users, suppliers, products, invoices,
     invoice_items, purchases, purchase_items, expenses, leads,
-    whatsapp_logs, uploaded_docs, settings, meta_whatsapp
+    whatsapp_logs, uploaded_docs, settings, meta_whatsapp, ocr
 )
 from database import engine
 import sql_models
@@ -54,6 +54,7 @@ app.include_router(whatsapp_logs.router, prefix="/api/whatsapp_logs", tags=["wha
 app.include_router(uploaded_docs.router, prefix="/api/uploaded_docs", tags=["uploaded_docs"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(meta_whatsapp.router, prefix="/api", tags=["meta_whatsapp"])
+app.include_router(ocr.router, prefix="/api/ocr", tags=["ocr"])
 
 # ✅ Root endpoint (for testing)
 @app.get("/")
