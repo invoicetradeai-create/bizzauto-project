@@ -370,6 +370,35 @@ def delete_whatsapp_log(db: Session, whatsapp_log_id: UUID):
         db.commit()
     return db_whatsapp_log
 
+# --- CRUD for ScheduledWhatsappMessage ---
+
+def get_scheduled_whatsapp_message(db: Session, message_id: UUID):
+    return db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.id == message_id).first()
+
+def get_scheduled_whatsapp_messages(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(ScheduledWhatsappMessage).order_by(ScheduledWhatsappMessage.scheduled_at.desc()).offset(skip).limit(limit).all()
+
+def get_pending_scheduled_whatsapp_messages(db: Session):
+    return db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.status == 'pending', ScheduledWhatsappMessage.scheduled_at <= datetime.utcnow()).all()
+
+def create_scheduled_whatsapp_message(db: Session, scheduled_message: PydanticScheduledWhatsappMessage):
+    db_message = ScheduledWhatsappMessage(**scheduled_message.model_dump())
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    return db_message
+
+def update_scheduled_whatsapp_message(db: Session, message_id: UUID, scheduled_message: PydanticScheduledWhatsappMessage):
+    db_message = db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.id == message_id).first()
+    if db_message:
+        for key, value in scheduled_message.model_dump(exclude_unset=True).items():
+            setattr(db_message, key, value)
+        db.commit()
+        db.refresh(db_message)
+    return db_message
+
+# --- End of CRUD for ScheduledWhatsappMessage ---
+
 def get_uploaded_doc(db: Session, uploaded_doc_id: UUID):
     return db.query(UploadedDoc).filter(UploadedDoc.id == uploaded_doc_id).first()
 
