@@ -1,10 +1,14 @@
+from dotenv import load_dotenv
+
+load_dotenv() # Load environment variables from .env file
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import dashboard, tables
 from routers.api import (
     companies, clients, users, suppliers, products, invoices,
     invoice_items, purchases, purchase_items, expenses, leads,
-    whatsapp_logs, uploaded_docs, settings, meta_whatsapp, ocr
+    whatsapp_logs, uploaded_docs, settings, meta_whatsapp, ocr, scheduled_messages
 )
 from database import engine
 import sql_models
@@ -55,6 +59,7 @@ app.include_router(uploaded_docs.router, prefix="/api/uploaded_docs", tags=["upl
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(meta_whatsapp.router, prefix="/api", tags=["meta_whatsapp"])
 app.include_router(ocr.router, prefix="/api/ocr", tags=["ocr"])
+app.include_router(scheduled_messages.router, prefix="/api", tags=["scheduled_messages"])
 
 # ✅ Root endpoint (for testing)
 @app.get("/")

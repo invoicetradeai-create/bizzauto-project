@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sql_models import (
-    Company, Product, Client, User, Supplier, Invoice, InvoiceItem, Purchase, PurchaseItem, Expense, Lead, WhatsappLog, UploadedDoc, Setting
+    Company, Product, Client, User, Supplier, Invoice, InvoiceItem, Purchase, PurchaseItem, Expense, Lead, WhatsappLog, UploadedDoc, Setting, ScheduledWhatsappMessage
 )
 from models import (
     Company as PydanticCompany, 
@@ -16,9 +16,11 @@ from models import (
     Lead as PydanticLead,
     WhatsappLog as PydanticWhatsappLog,
     UploadedDoc as PydanticUploadedDoc,
-    Setting as PydanticSetting
+    Setting as PydanticSetting,
+    ScheduledWhatsappMessage as PydanticScheduledWhatsappMessage
 )
 from uuid import UUID
+from datetime import datetime
 
 def get_company(db: Session, company_id: UUID):
     return db.query(Company).filter(Company.id == company_id).first()

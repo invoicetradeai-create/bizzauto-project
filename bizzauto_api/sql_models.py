@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, ForeignKey, Date
+from sqlalchemy import Column, String, Float, Integer, ForeignKey, Date, DateTime
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -25,6 +25,7 @@ class Company(Base):
     leads = relationship("Lead", back_populates="company")
     whatsapp_logs = relationship("WhatsappLog", back_populates="company")
     uploaded_docs = relationship("UploadedDoc", back_populates="company")
+    scheduled_whatsapp_messages = relationship("ScheduledWhatsappMessage", back_populates="company")
 
 class Product(Base):
     __tablename__ = "products"
@@ -175,6 +176,18 @@ class WhatsappLog(Base):
     status = Column(String, default='sent')
 
     company = relationship("Company", back_populates="whatsapp_logs")
+
+class ScheduledWhatsappMessage(Base):
+    __tablename__ = "scheduled_whatsapp_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    phone = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    scheduled_at = Column(DateTime, nullable=False)
+    status = Column(String, default='pending', index=True) # pending, sent, failed
+
+    company = relationship("Company", back_populates="scheduled_whatsapp_messages")
 
 class UploadedDoc(Base):
     __tablename__ = "uploaded_docs"

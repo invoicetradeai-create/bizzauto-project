@@ -37,6 +37,10 @@ export const API_ENDPOINTS = {
   uploadedDocs: '/api/uploaded_docs',
   settings: '/api/settings',
 
+  // Meta WhatsApp
+  sendMetaWhatsapp: '/api/send-meta-whatsapp',
+  scheduledWhatsappMessages: '/api/scheduled-whatsapp-messages',
+
   // Dashboard
   dashboard: '/dashboard',
 };

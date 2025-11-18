@@ -130,6 +130,21 @@ class WhatsappLog(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class ScheduledWhatsappMessage(BaseModel):
+    id: Optional[UUID] = None
+    company_id: UUID
+    phone: str
+    message: str
+    scheduled_at: datetime
+    status: Optional[str] = 'pending'
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ScheduledWhatsappMessageCreate(BaseModel):
+    phone: str
+    message: str
+    scheduled_at: datetime
+
 class UploadedDoc(BaseModel):
     id: Optional[UUID] = None
     company_id: UUID

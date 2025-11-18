@@ -1,4 +1,3 @@
-
 import requests
 import os
 import tempfile
@@ -10,13 +9,14 @@ from crud import create_whatsapp_log, get_companies, get_whatsapp_logs, update_w
 from models import WhatsappLog as PydanticWhatsappLog
 from redis_config import queue
 from ocr_tasks import process_invoice_image_gcp
+from whatsapp_utils import normalize_text, check_product_availability, send_reply
 
 router = APIRouter()
 
 # --- Environment Variables ---
-ACCESS_TOKEN = os.environ.get("META_WHATSAPP_ACCESS_TOKEN")
-PHONE_NUMBER_ID = os.environ.get("META_WHATSAPP_PHONE_NUMBER_ID")
-VERIFY_TOKEN = os.environ.get("META_WHATSAPP_VERIFY_TOKEN")
+ACCESS_TOKEN = os.environ.get("WHATSAPP_TOKEN")
+PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
+VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN")
 API_VERSION = "v19.0"
 
 # --- Pydantic Models for Request Bodies ---
@@ -117,7 +117,12 @@ def send_whatsapp_message(message_request: MessageRequest, db: Session = Depends
         print(f"Error calling Meta API: {e}")
         if e.response is not None:
             print(f"Response body: {e.response.text}")
-            raise HTTPException(status_code=e.response.status_code, detail=e.response.json())
+            try:
+                error_json = e.response.json()
+                error_message = error_json.get("error", {}).get("message", e.response.text)
+            except:
+                error_message = e.response.text
+            raise HTTPException(status_code=e.response.status_code, detail=error_message)
         else:
             raise HTTPException(status_code=500, detail="Failed to connect to Meta API.")
 
@@ -150,6 +155,7 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     """
     Receives incoming messages and status updates from WhatsApp.
     If an image is received, it triggers the OCR processing task.
+    If a text message is received, it checks for product availability and sends a reply.
     """
     data = await request.json()
     print("Received webhook data:")
@@ -171,17 +177,37 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
             if "messages" in value:
                 for message in value.get("messages", []):
                     message_type = message.get("type")
+                    sender_phone = message.get("from")
                     
                     # Handle incoming text messages
                     if message_type == "text":
-                        whatsapp_log = PydanticWhatsappLog(
-                            company_id=company_id,
-                            message_type="incoming",
-                            phone=message.get("from"),
-                            message=message.get("text", {}).get("body"),
-                            status="received"
-                        )
-                        create_whatsapp_log(db, whatsapp_log)
+                        incoming_msg_body = message.get("text", {}).get("body", "")
+                        
+                        # --- New Logic Integration ---
+                        normalized_msg = normalize_text(incoming_msg_body)
+                        product = await check_product_availability(normalized_msg)
+                        
+                        if product:
+                            reply_body = (
+                                f"✅ Product Found: {product['name']}\n"
+                                f"Price: {product['price']}\n"
+                                f"Stock: {product['stock']}"
+                            )
+                        else:
+                            reply_body = "Sorry, we couldn't find the product you're looking for."
+                        
+                        await send_reply(to=sender_phone, message=reply_body)
+                        # --- End of New Logic ---
+
+                        # Log the incoming message
+                        # whatsapp_log = PydanticWhatsappLog(
+                        #     company_id=company_id,
+                        #     message_type="incoming",
+                        #     phone=sender_phone,
+                        #     message=incoming_msg_body,
+                        #     status="received_and_replied"
+                        # )
+                        # create_whatsapp_log(db, whatsapp_log)
                     
                     # Handle incoming image messages
                     elif message_type == "image":
@@ -198,7 +224,7 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
                                 whatsapp_log = PydanticWhatsappLog(
                                     company_id=company_id,
                                     message_type="incoming_image",
-                                    phone=message.get("from"),
+                                    phone=sender_phone,
                                     message=f"Image received, enqueued for OCR. Path: {image_path}",
                                     status="processing"
                                 )
@@ -211,7 +237,8 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
                     for log in logs:
                         if log.phone == status.get("recipient_id"):
                             log.status = status.get("status")
-                            update_whatsapp_log(db, log.id, log)
+                            updated_log_pydantic = PydanticWhatsappLog.model_validate(log)
+                            update_whatsapp_log(db, log.id, updated_log_pydantic)
                             break
 
     return {"status": "success"}
