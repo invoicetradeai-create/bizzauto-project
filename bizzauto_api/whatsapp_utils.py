@@ -55,7 +55,7 @@ async def check_product_availability(text: str) -> Optional[Dict[str, Any]]:
     """
     try:
         # Fetch all products from the Supabase table
-        response = await supabase.table("products").select("id, name, price, stock").execute()
+        response = await supabase.table("products").select("id, name, price, stock_quantity").execute()
         if not response.data:
             return None
         
@@ -69,7 +69,7 @@ async def check_product_availability(text: str) -> Optional[Dict[str, Any]]:
             if not product_name:
                 continue
 
-            normalized_product_name = product_name.lower()
+            normalized_product_name = product_name.lower().strip()
             
             # Check for full or partial phrase match
             if normalized_product_name in normalized_text:

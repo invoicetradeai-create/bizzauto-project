@@ -191,7 +191,7 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
                             reply_body = (
                                 f"✅ Product Found: {product['name']}\n"
                                 f"Price: {product['price']}\n"
-                                f"Stock: {product['stock']}"
+                                f"Stock: {product['stock_quantity']}"
                             )
                         else:
                             reply_body = "Sorry, we couldn't find the product you're looking for."
