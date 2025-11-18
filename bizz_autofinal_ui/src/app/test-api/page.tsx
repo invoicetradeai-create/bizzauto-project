@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiClient } from '../../../lib/api-client';
-import { API_ENDPOINTS } from '../../../lib/api-config';
+import { apiClient } from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 
 // Define reusable API response type
