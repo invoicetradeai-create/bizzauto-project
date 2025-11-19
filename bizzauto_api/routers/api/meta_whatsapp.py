@@ -185,7 +185,7 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
                         
                         # --- New Logic Integration ---
                         normalized_msg = normalize_text(incoming_msg_body)
-                        product = await check_product_availability(normalized_msg)
+                        product = check_product_availability(db, normalized_msg)
                         
                         if product:
                             reply_body = (

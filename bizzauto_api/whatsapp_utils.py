@@ -3,8 +3,8 @@ import string
 import httpx
 import os
 from typing import Optional, Dict, Any
-from supabase import Client
-from database import supabase
+from sqlalchemy.orm import Session
+from sql_models import Product
 
 # =================================
 # 1. INCOMING TEXT NORMALIZATION
@@ -48,24 +48,33 @@ def normalize_text(msg: str) -> str:
 # =================================
 # 2. PRODUCT AVAILABILITY CHECK
 # =================================
-async def check_product_availability(text: str) -> Optional[Dict[str, Any]]:
+def check_product_availability(db: Session, text: str) -> Optional[Dict[str, Any]]:
     """
-    Checks for product names in a normalized text against the 'products' table in Supabase.
+    Checks for product names in a normalized text against the 'products' table in the PostgreSQL database.
     Returns the product dictionary if a match is found, otherwise None.
     """
     try:
-        # Fetch all products from the Supabase table
-        response = await supabase.table("products").select("id, name, price, stock_quantity").execute()
-        if not response.data:
+        # Fetch all products from the PostgreSQL database
+        print("--- Checking Product Availability ---")
+        products = db.query(Product).all()
+        
+        if not products:
+            print("DEBUG: No products found in the database.")
             return None
         
-        products = response.data
         normalized_text = text.lower()
+        
+        # --- Start Debug Logging ---
+        print(f"DEBUG: Normalized incoming text: '{normalized_text}'")
+        db_product_names = [p.name.lower().strip() for p in products]
+        print(f"DEBUG: Product names from DB: {db_product_names}")
+        # --- End Debug Logging ---
+
         text_words = set(normalized_text.split())
 
         # Iterate through products to find a match in the message
         for product in products:
-            product_name = product.get("name")
+            product_name = product.name
             if not product_name:
                 continue
 
@@ -73,13 +82,16 @@ async def check_product_availability(text: str) -> Optional[Dict[str, Any]]:
             
             # Check for full or partial phrase match
             if normalized_product_name in normalized_text:
-                return product
+                print(f"DEBUG: Found match (phrase in text): '{normalized_product_name}' in '{normalized_text}'")
+                return {"name": product.name, "price": product.price, "stock_quantity": product.stock_quantity}
 
             # Check for word-by-word similarity
             product_words = set(normalized_product_name.split())
             if text_words.intersection(product_words):
-                return product
+                print(f"DEBUG: Found match (word intersection): {text_words.intersection(product_words)}")
+                return {"name": product.name, "price": product.price, "stock_quantity": product.stock_quantity}
 
+        print("DEBUG: No match found after checking all products.")
         return None
     except Exception as e:
         print(f"An error occurred while checking product availability: {e}")
@@ -127,3 +139,4 @@ async def send_reply(to: str, message: str) -> Optional[Dict[str, Any]]:
         except httpx.RequestError as e:
             print(f"An error occurred while requesting {e.request.url!r}.")
             return None
+
