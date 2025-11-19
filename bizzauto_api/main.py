@@ -1,15 +1,34 @@
 from dotenv import load_dotenv
+import sys
+import os
+
+# Add the directory containing main.py (which is bizzauto_api) to sys.path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 load_dotenv() # Load environment variables from .env file
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import dashboard, tables
-from routers.api import (
-    companies, clients, users, suppliers, products, invoices,
-    invoice_items, purchases, purchase_items, expenses, leads,
-    whatsapp_logs, uploaded_docs, settings, meta_whatsapp, ocr, scheduled_messages
-)
+import routers.dashboard as dashboard
+import routers.tables as tables
+import routers.api.companies as companies
+import routers.api.clients as clients
+import routers.api.users as users
+import routers.api.suppliers as suppliers
+import routers.api.products as products
+import routers.api.invoices as invoices
+import routers.api.invoice_items as invoice_items
+import routers.api.purchases as purchases
+import routers.api.purchase_items as purchase_items
+import routers.api.expenses as expenses
+import routers.api.leads as leads
+import routers.api.whatsapp_logs as whatsapp_logs
+import routers.api.uploaded_docs as uploaded_docs
+import routers.api.settings as settings
+import routers.api.meta_whatsapp as meta_whatsapp
+import routers.api.ocr as ocr
+import routers.api.scheduled_messages as scheduled_messages
+
 from database import engine
 import sql_models
 import logging
@@ -57,7 +76,7 @@ app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(whatsapp_logs.router, prefix="/api/whatsapp_logs", tags=["whatsapp_logs"])
 app.include_router(uploaded_docs.router, prefix="/api/uploaded_docs", tags=["uploaded_docs"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
-app.include_router(meta_whatsapp.router, prefix="/api", tags=["meta_whatsapp"])
+app.include_router(meta_whatsapp.router, prefix="/api/meta-whatsapp", tags=["meta_whatsapp"])
 app.include_router(ocr.router, prefix="/api/ocr", tags=["ocr"])
 app.include_router(scheduled_messages.router, prefix="/api", tags=["scheduled_messages"])
 

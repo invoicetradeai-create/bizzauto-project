@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 // In a real-world scenario, this should be in an environment variable.
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
-export async function POST(request: Request) {
+export async function POST(request) {
   try {
     // 1. Get the 'to' and 'body' from the frontend request.
     const { to, body } = await request.json();
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     // 4. Return the successful response to the frontend.
     return NextResponse.json(responseData, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in Next.js API route:', error);
     // Handle network errors or other exceptions
     return NextResponse.json({ detail: 'Internal Server Error in Next.js API route.' }, { status: 500 });

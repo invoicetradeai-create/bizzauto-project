@@ -1,15 +1,22 @@
-import requests
+# routers/api/meta_whatsapp.py
 import os
 import tempfile
-from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel
+import asyncio
+import requests
+from fastapi import APIRouter, HTTPException, Request
+# REMOVE Depends and Session from here if not used elsewhere in the route
 from sqlalchemy.orm import Session
-from database import get_db
+
+# 1. Import SessionLocal (the factory) instead of get_db
+from database import SessionLocal 
 from crud import create_whatsapp_log, get_companies, get_whatsapp_logs, update_whatsapp_log
 from models import WhatsappLog as PydanticWhatsappLog
 from redis_config import queue
 from ocr_tasks import process_invoice_image_gcp
-from whatsapp_utils import normalize_text, check_product_availability, send_reply
+# Duplicate import removed
+# Removed 'normalize_text' because it no longer exists in utils
+from whatsapp_utils import send_reply
+from whatsapp_agent import run_whatsapp_agent
 
 router = APIRouter()
 
@@ -17,228 +24,102 @@ router = APIRouter()
 ACCESS_TOKEN = os.environ.get("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN")
-API_VERSION = "v19.0"
+API_VERSION = "v24.0"
 
-# --- Pydantic Models for Request Bodies ---
-class MessageRequest(BaseModel):
-    to: str
-    body: str
+import traceback # Add this import
+from pydantic import BaseModel
 
-def download_media_file(media_id: str, access_token: str) -> str | None:
-    """
-    Downloads a media file from Meta's servers and saves it temporarily.
-    Returns the path to the saved file, or None if an error occurs.
-    """
+# ... [keep other imports] ...
+
+# ... [keep router and environment variables] ...
+
+
+# -----------------------------
+# Background processing (FIXED)
+# -----------------------------
+async def process_whatsapp_message(entry_data: dict):
+    print("--- [DEBUG] Background Task Started ---") # Debug marker
+    db = SessionLocal()
     try:
-        # 1. Get media URL
-        url = f"https://graph.facebook.com/{API_VERSION}/{media_id}"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        media_info = response.json()
-        media_url = media_info.get("url")
+        for entry in entry_data.get("entry", []):
+            for change in entry.get("changes", []):
+                value = change.get("value", {})
 
-        if not media_url:
-            print("Error: Media URL not found in response.")
-            return None
+                if "messages" in value:
+                    for message in value.get("messages", []):
+                        message_type = message.get("type")
+                        sender_phone = message.get("from")
 
-        # 2. Download the actual media file
-        media_response = requests.get(media_url, headers=headers)
-        media_response.raise_for_status()
-
-        # 3. Save to a temporary file
-        content_type = media_response.headers.get("Content-Type", "application/octet-stream")
-        extension = content_type.split("/")[-1] if "/" in content_type else "tmp"
+                        if message_type == "text":
+                            incoming_text = message.get("text", {}).get("body", "")
+                            
+                            print(f"--- [DEBUG] Text received: {incoming_text}")
         
-        # Create a temporary directory if it doesn't exist
-        temp_dir = os.path.join(os.path.dirname(__file__), "..", "..", "temp_media")
-        os.makedirs(temp_dir, exist_ok=True)
+                            # 1. Check if Agent works
+                            reply = await run_whatsapp_agent(incoming_text, sender_phone)
+                            print(f"--- [DEBUG] Agent output: {reply}") 
+                            
+                            if not reply:
+                                print("--- [ERROR] Agent returned empty response!")
+                                return
 
-        # Use a temporary file to save the media
-        fd, temp_path = tempfile.mkstemp(suffix=f".{extension}", dir=temp_dir)
-        
-        with os.fdopen(fd, 'wb') as temp_file:
-            temp_file.write(media_response.content)
-        
-        print(f"Media file saved to: {temp_path}")
-        return temp_path
+                            # 2. Check the number being sent to
+                            print(f"--- [DEBUG] Sending reply to raw number: {sender_phone}")
+                            
+                            await send_reply(to=sender_phone, message=reply)
 
-    except requests.exceptions.RequestException as e:
-        print(f"Error downloading media file: {e}")
-        if e.response is not None:
-            print(f"Response body: {e.response.text}")
-        return None
     except Exception as e:
-        print(f"An unexpected error occurred during media download: {e}")
-        return None
+        # THIS IS THE MISSING PIECE
+        print(f"--- [CRITICAL FAILURE] ---")
+        traceback.print_exc() # This prints the exact line number of the error
+    finally:
+        db.close()
+        print("--- [DEBUG] Background Task Finished ---")
 
-
-@router.post("/send-meta-whatsapp", tags=["Meta WhatsApp"])
-def send_whatsapp_message(message_request: MessageRequest, db: Session = Depends(get_db)):
-    """
-    Sends a text message to a WhatsApp number using Meta's Graph API.
-    """
-    if not all([ACCESS_TOKEN, PHONE_NUMBER_ID, VERIFY_TOKEN]):
-        raise HTTPException(
-            status_code=500,
-            detail="Server configuration error: Meta WhatsApp environment variables are not set."
-        )
-
-    url = f"https://graph.facebook.com/{API_VERSION}/{PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json",
-    }
-    data = {
-        "messaging_product": "whatsapp",
-        "to": message_request.to,
-        "type": "text",
-        "text": {"body": message_request.body},
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        
-        # Log the outgoing message
-        companies = get_companies(db, skip=0, limit=1)
-        if companies:
-            whatsapp_log = PydanticWhatsappLog(
-                company_id=companies[0].id,
-                message_type="outgoing",
-                phone=message_request.to,
-                message=message_request.body,
-                status="sent"
-            )
-            create_whatsapp_log(db, whatsapp_log)
-            
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error calling Meta API: {e}")
-        if e.response is not None:
-            print(f"Response body: {e.response.text}")
-            try:
-                error_json = e.response.json()
-                error_message = error_json.get("error", {}).get("message", e.response.text)
-            except:
-                error_message = e.response.text
-            raise HTTPException(status_code=e.response.status_code, detail=error_message)
-        else:
-            raise HTTPException(status_code=500, detail="Failed to connect to Meta API.")
-
-@router.get("/webhook", tags=["Meta WhatsApp"])
+# -----------------------------
+# Webhook verification
+# -----------------------------
+@router.get("/webhook")
 def verify_webhook(request: Request):
-    """
-    Verifies the webhook subscription with Meta.
-    """
-    if not VERIFY_TOKEN:
-        raise HTTPException(
-            status_code=500,
-            detail="Server configuration error: META_WHATSAPP_VERIFY_TOKEN is not set."
-        )
-
     params = request.query_params
     mode = params.get("hub.mode")
     token = params.get("hub.verify_token")
     challenge = params.get("hub.challenge")
-
     if mode == "subscribe" and token == VERIFY_TOKEN:
-        print("Webhook verified successfully!")
-        # Meta expects the challenge as a plain integer, not in a JSON object
         return int(challenge)
-    else:
-        print("Webhook verification failed.")
-        raise HTTPException(status_code=403, detail="Webhook verification failed.")
+    raise HTTPException(status_code=403, detail="Webhook verification failed.")
 
-@router.post("/webhook", tags=["Meta WhatsApp"])
-async def receive_webhook(request: Request, db: Session = Depends(get_db)):
-    """
-    Receives incoming messages and status updates from WhatsApp.
-    If an image is received, it triggers the OCR processing task.
-    If a text message is received, it checks for product availability and sends a reply.
-    """
+# -----------------------------
+
+class SendMessageRequest(BaseModel):
+    to: str
+    body: str
+
+@router.post("/send-meta-whatsapp")
+async def send_meta_whatsapp_message(request: SendMessageRequest):
+    try:
+        response = await send_reply(to=request.to, message=request.body)
+        if response and "messages" in response:
+            return {"status": "success", "data": response}
+        else:
+            # Try to get a more specific error from Meta's response
+            error_message = "Failed to send message"
+            if response and "error" in response and "message" in response["error"]:
+                error_message = response["error"]["message"]
+            raise HTTPException(status_code=500, detail=error_message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# -----------------------------
+# Webhook to receive messages
+# -----------------------------
+@router.post("/webhook")
+async def receive_webhook(request: Request):
+    # 4. Removed 'db: Session = Depends(get_db)' from arguments
     data = await request.json()
-    print("Received webhook data:")
-    print(data)
-
-    # Acknowledge the webhook immediately to avoid retries from Meta
-    # The actual processing will happen in the background
     
-    companies = get_companies(db, skip=0, limit=1)
-    if not companies:
-        print("No companies found in the database. Cannot process webhook.")
-        return {"status": "success"}
-
-    company_id = companies[0].id
-
-    for entry in data.get("entry", []):
-        for change in entry.get("changes", []):
-            value = change.get("value", {})
-            if "messages" in value:
-                for message in value.get("messages", []):
-                    message_type = message.get("type")
-                    sender_phone = message.get("from")
-                    
-                    # Handle incoming text messages
-                    if message_type == "text":
-                        incoming_msg_body = message.get("text", {}).get("body", "")
-                        
-                        # --- New Logic Integration ---
-                        normalized_msg = normalize_text(incoming_msg_body)
-                        product = check_product_availability(db, normalized_msg)
-                        
-                        if product:
-                            reply_body = (
-                                f"✅ Product Found: {product['name']}\n"
-                                f"Price: {product['price']}\n"
-                                f"Stock: {product['stock_quantity']}"
-                            )
-                        else:
-                            reply_body = "Sorry, we couldn't find the product you're looking for."
-                        
-                        await send_reply(to=sender_phone, message=reply_body)
-                        # --- End of New Logic ---
-
-                        # Log the incoming message
-                        # whatsapp_log = PydanticWhatsappLog(
-                        #     company_id=company_id,
-                        #     message_type="incoming",
-                        #     phone=sender_phone,
-                        #     message=incoming_msg_body,
-                        #     status="received_and_replied"
-                        # )
-                        # create_whatsapp_log(db, whatsapp_log)
-                    
-                    # Handle incoming image messages
-                    elif message_type == "image":
-                        print("Image message received. Triggering OCR.")
-                        media_id = message.get("image", {}).get("id")
-                        if media_id and ACCESS_TOKEN:
-                            image_path = download_media_file(media_id, ACCESS_TOKEN)
-                            if image_path:
-                                # Enqueue the OCR processing task
-                                queue.enqueue(process_invoice_image_gcp, image_path)
-                                print(f"Enqueued OCR task for image: {image_path}")
-                                
-                                # Log that we received an image
-                                whatsapp_log = PydanticWhatsappLog(
-                                    company_id=company_id,
-                                    message_type="incoming_image",
-                                    phone=sender_phone,
-                                    message=f"Image received, enqueued for OCR. Path: {image_path}",
-                                    status="processing"
-                                )
-                                create_whatsapp_log(db, whatsapp_log)
-
-            elif "statuses" in value:
-                for status in value.get("statuses", []):
-                    # Find the message by recipient phone and update its status
-                    logs = get_whatsapp_logs(db, skip=0, limit=100) # A more efficient query would be needed in a real app
-                    for log in logs:
-                        if log.phone == status.get("recipient_id"):
-                            log.status = status.get("status")
-                            updated_log_pydantic = PydanticWhatsappLog.model_validate(log)
-                            update_whatsapp_log(db, log.id, updated_log_pydantic)
-                            break
-
-    return {"status": "success"}
+    # 5. Pass ONLY data, do not pass the 'db' object
+    asyncio.create_task(process_whatsapp_message(data))
+    
+    return {"status": "received"}

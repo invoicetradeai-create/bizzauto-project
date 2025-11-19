@@ -1,6 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, ''), // remove trailing slash
+  // BASE_URL should point directly to the FastAPI backend
+  BASE_URL: (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, ''), // remove trailing slash
   TIMEOUT: 30000,
 };
 
@@ -38,7 +39,8 @@ export const API_ENDPOINTS = {
   settings: '/api/settings',
 
   // Meta WhatsApp
-  sendMetaWhatsapp: '/api/send-meta-whatsapp',
+  // This now points directly to the FastAPI endpoint
+  sendMetaWhatsapp: '/api/meta-whatsapp/send-meta-whatsapp',
   scheduledWhatsappMessages: '/api/scheduled-whatsapp-messages',
 
   // Dashboard

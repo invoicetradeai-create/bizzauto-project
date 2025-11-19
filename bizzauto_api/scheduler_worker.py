@@ -40,7 +40,9 @@ def send_whatsapp_message(to: str, body: str) -> bool:
     try:
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
+        response_json = response.json() # Get the JSON response
         print(f"Successfully sent message to {to}")
+        print(f"Meta API Response: {response_json}") # Print the response
         return True
     except requests.exceptions.RequestException as e:
         print(f"Error sending message to {to}: {e}")
