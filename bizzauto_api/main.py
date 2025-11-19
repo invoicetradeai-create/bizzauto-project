@@ -76,7 +76,11 @@ app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(whatsapp_logs.router, prefix="/api/whatsapp_logs", tags=["whatsapp_logs"])
 app.include_router(uploaded_docs.router, prefix="/api/uploaded_docs", tags=["uploaded_docs"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
-app.include_router(meta_whatsapp.router, prefix="/api/meta-whatsapp", tags=["meta_whatsapp"])
+app.include_router(
+    meta_whatsapp.router,
+    prefix="/api/meta_whatsapp",
+    tags=["whatsapp"]
+)
 app.include_router(ocr.router, prefix="/api/ocr", tags=["ocr"])
 app.include_router(scheduled_messages.router, prefix="/api", tags=["scheduled_messages"])
 

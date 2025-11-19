@@ -26,6 +26,7 @@ PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN")
 API_VERSION = "v24.0"
 
+import json
 import traceback # Add this import
 from pydantic import BaseModel
 
@@ -38,43 +39,73 @@ from pydantic import BaseModel
 # Background processing (FIXED)
 # -----------------------------
 async def process_whatsapp_message(entry_data: dict):
-    print("--- [DEBUG] Background Task Started ---") # Debug marker
+    print("\n" + "=" * 60)
+    print("🚀 BACKGROUND TASK STARTED")
+    print("=" * 60)
+    
     db = SessionLocal()
+    
     try:
+        # Log the entire payload
+        print(f"📋 Entry data keys: {entry_data.keys()}")
+        
         for entry in entry_data.get("entry", []):
+            print(f"📍 Processing entry: {entry.get('id')}")
+            
             for change in entry.get("changes", []):
                 value = change.get("value", {})
+                print(f"🔍 Change value keys: {value.keys()}")
 
                 if "messages" in value:
+                    print(f"📨 Found {len(value['messages'])} message(s)")
+                    
                     for message in value.get("messages", []):
                         message_type = message.get("type")
                         sender_phone = message.get("from")
+                        message_id = message.get("id")
+                        
+                        print(f"\n📱 Message Details:")
+                        print(f"   - Type: {message_type}")
+                        print(f"   - From: {sender_phone}")
+                        print(f"   - ID: {message_id}")
 
                         if message_type == "text":
                             incoming_text = message.get("text", {}).get("body", "")
+                            print(f"   - Text: {incoming_text}")
                             
-                            print(f"--- [DEBUG] Text received: {incoming_text}")
-        
-                            # 1. Check if Agent works
+                            # Run agent
+                            print(f"🤖 Running agent...")
                             reply = await run_whatsapp_agent(incoming_text, sender_phone)
-                            print(f"--- [DEBUG] Agent output: {reply}") 
+                            print(f"✉️  Agent reply: {reply}")
                             
                             if not reply:
-                                print("--- [ERROR] Agent returned empty response!")
-                                return
+                                print("❌ Agent returned empty response!")
+                                continue
 
-                            # 2. Check the number being sent to
-                            print(f"--- [DEBUG] Sending reply to raw number: {sender_phone}")
-                            
-                            await send_reply(to=sender_phone, message=reply)
+                            # Send reply
+                            print(f"📤 Sending to: {sender_phone}")
+                            result = await send_reply(to=sender_phone, message=reply)
+                            print(f"📬 Send result: {result}")
+                        
+                        else:
+                            print(f"⚠️  Unsupported message type: {message_type}")
+                
+                else:
+                    print("ℹ️  No 'messages' in value - might be status update")
 
     except Exception as e:
-        # THIS IS THE MISSING PIECE
-        print(f"--- [CRITICAL FAILURE] ---")
-        traceback.print_exc() # This prints the exact line number of the error
+        print("\n" + "❌" * 30)
+        print("💥 CRITICAL ERROR IN BACKGROUND TASK")
+        print("❌" * 30)
+        print(f"Error: {str(e)}")
+        traceback.print_exc()
+        print("❌" * 30 + "\n")
+    
     finally:
         db.close()
-        print("--- [DEBUG] Background Task Finished ---")
+        print("=" * 60)
+        print("✅ BACKGROUND TASK FINISHED")
+        print("=" * 60 + "\n")
 
 # -----------------------------
 # Webhook verification
@@ -116,10 +147,23 @@ async def send_meta_whatsapp_message(request: SendMessageRequest):
 # -----------------------------
 @router.post("/webhook")
 async def receive_webhook(request: Request):
-    # 4. Removed 'db: Session = Depends(get_db)' from arguments
-    data = await request.json()
+    print("=" * 50)
+    print("🔔 WEBHOOK RECEIVED!")
+    print("=" * 50)
     
-    # 5. Pass ONLY data, do not pass the 'db' object
+    data = await request.json()
+    print(f"📦 Raw data: {json.dumps(data, indent=2)}")
+    
     asyncio.create_task(process_whatsapp_message(data))
     
+    print("✅ Background task created")
     return {"status": "received"}
+    
+@router.get("/test")
+async def test_endpoint():
+    return {
+        "status": "working",
+        "token_set": bool(ACCESS_TOKEN),
+        "phone_id_set": bool(PHONE_NUMBER_ID),
+        "verify_token_set": bool(VERIFY_TOKEN)
+    }

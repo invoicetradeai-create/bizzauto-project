@@ -5,7 +5,7 @@ from uuid import UUID
 from dotenv import load_dotenv, find_dotenv
 
 from openai import AsyncOpenAI
-from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool
+from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, SQLiteSession
 
 from database import SessionLocal
 import crud
@@ -93,13 +93,13 @@ async def run_whatsapp_agent(message: str, phone_number: str) -> str:
     """
     Now accepts phone_number to maintain unique chat history for each user.
     """
-    # You need to configure your Runner/Agent to use a storage mechanism 
-    # (like Sqlite or Postgres) mapped to this 'phone_number'.
+    # Create a persistent session object for the user (phone number)
+    session = SQLiteSession(session_id=phone_number, db_path="whatsapp_sessions.db")
     
     result = await Runner.run(
         agent, 
         message, 
-        session_id=phone_number # <--- Crucial Addition
+        session=session
     ) 
     return result.final_output
 
