@@ -124,6 +124,7 @@ class WhatsappLog(BaseModel):
     id: Optional[UUID] = None
     company_id: UUID
     message_type: Optional[str] = None
+    whatsapp_message_id: Optional[str] = None # Added this line
     phone: Optional[str] = None
     message: Optional[str] = None
     status: Optional[str] = 'sent'

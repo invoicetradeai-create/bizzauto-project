@@ -171,6 +171,7 @@ class WhatsappLog(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
     message_type = Column(String, nullable=True)
+    whatsapp_message_id = Column(String, nullable=True, unique=True) # Added this line
     phone = Column(String, nullable=True)
     message = Column(String, nullable=True)
     status = Column(String, default='sent')

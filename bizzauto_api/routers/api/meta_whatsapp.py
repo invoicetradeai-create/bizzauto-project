@@ -84,14 +84,72 @@ async def process_whatsapp_message(entry_data: dict):
 
                             # Send reply
                             print(f"📤 Sending to: {sender_phone}")
-                            result = await send_reply(to=sender_phone, message=reply)
-                            print(f"📬 Send result: {result}")
+                            send_result = await send_reply(to=sender_phone, message=reply)
+                            print(f"📬 Send result: {send_result}")
+
+                            whatsapp_message_id = None
+                            if send_result and "messages" in send_result and len(send_result["messages"]) > 0:
+                                whatsapp_message_id = send_result["messages"][0].get("id")
+                                print(f"🔗 Associated WhatsApp Message ID: {whatsapp_message_id}")
+
+                            # Create WhatsappLog entry for outgoing message
+                            # Assuming a default company_id for now, this should be determined contextually
+                            # For now, let's use a placeholder company_id. In a real app, this would come from user session or config.
+                            # Get a company_id - this is a placeholder
+                            companies = get_companies(db)
+                            company_id_for_log = companies[0].id if companies else None
+
+                            if company_id_for_log:
+                                new_log = PydanticWhatsappLog(
+                                    company_id=company_id_for_log,
+                                    message_type="text", # Outgoing message
+                                    whatsapp_message_id=whatsapp_message_id,
+                                    phone=sender_phone,
+                                    message=reply,
+                                    status="sent" # Initial status for outgoing
+                                )
+                                create_whatsapp_log(db, new_log)
+                                print(f"📝 Outgoing message logged with ID: {whatsapp_message_id}")
+                            else:
+                                print("⚠️  Could not find a company to associate the whatsapp log with.")
                         
                         else:
                             print(f"⚠️  Unsupported message type: {message_type}")
                 
+                elif "statuses" in value:
+                    print(f"🔄 Found {len(value['statuses'])} status update(s)")
+                    for status_update in value.get("statuses", []):
+                        message_id = status_update.get("id")
+                        status = status_update.get("status")
+                        timestamp = status_update.get("timestamp")
+                        recipient_id = status_update.get("recipient_id")
+                        
+                        print(f"\n📈 Status Update Details:")
+                        print(f"   - Message ID: {message_id}")
+                        print(f"   - Status: {status}")
+                        print(f"   - Timestamp: {timestamp}")
+                        print(f"   - Recipient ID: {recipient_id}")
+                        
+                        if message_id and status:
+                            # Update the WhatsappLog entry
+                            log_entry = get_whatsapp_log_by_whatsapp_message_id(db, message_id)
+                            if log_entry:
+                                updated_log_data = PydanticWhatsappLog(
+                                    company_id=log_entry.company_id, # Keep existing company_id
+                                    message_type=log_entry.message_type, # Keep existing message_type
+                                    whatsapp_message_id=log_entry.whatsapp_message_id, # Keep existing meta ID
+                                    phone=log_entry.phone, # Keep existing phone
+                                    message=log_entry.message, # Keep existing message
+                                    status=status # Update status
+                                )
+                                update_whatsapp_log(db, message_id, updated_log_data)
+                                print(f"✅ WhatsappLog for message ID {message_id} updated to status: {status}")
+                            else:
+                                print(f"❌ No WhatsappLog entry found for Meta message ID: {message_id}")
+                        else:
+                            print(f"⚠️  Missing message ID or status in update: {status_update}")
                 else:
-                    print("ℹ️  No 'messages' in value - might be status update")
+                    print("ℹ️  No 'messages' or 'statuses' in value - might be other webhook event")
 
     except Exception as e:
         print("\n" + "❌" * 30)

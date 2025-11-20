@@ -361,14 +361,27 @@ def create_whatsapp_log(db: Session, whatsapp_log: PydanticWhatsappLog):
     db.refresh(db_whatsapp_log)
     return db_whatsapp_log
 
-def update_whatsapp_log(db: Session, whatsapp_log_id: UUID, whatsapp_log: PydanticWhatsappLog):
-    db_whatsapp_log = db.query(WhatsappLog).filter(WhatsappLog.id == whatsapp_log_id).first()
+def get_whatsapp_log_by_whatsapp_message_id(db: Session, whatsapp_message_id: str):
+    return db.query(WhatsappLog).filter(WhatsappLog.whatsapp_message_id == whatsapp_message_id).first()
+
+def update_whatsapp_log(db: Session, whatsapp_message_id: str, whatsapp_log: PydanticWhatsappLog):
+    db_whatsapp_log = db.query(WhatsappLog).filter(WhatsappLog.whatsapp_message_id == whatsapp_message_id).first()
     if db_whatsapp_log:
         for key, value in whatsapp_log.model_dump(exclude_unset=True).items():
             setattr(db_whatsapp_log, key, value)
         db.commit()
         db.refresh(db_whatsapp_log)
     return db_whatsapp_log
+
+def delete_whatsapp_log(db: Session, whatsapp_log_id: UUID):
+    db_whatsapp_log = db.query(WhatsappLog).filter(WhatsappLog.id == whatsapp_log_id).first()
+    if db_whatsapp_log:
+        db.delete(db_whatsapp_log)
+        db.commit()
+    return db_whatsapp_log
+
+def get_whatsapp_log_by_whatsapp_message_id(db: Session, whatsapp_message_id: str):
+    return db.query(WhatsappLog).filter(WhatsappLog.whatsapp_message_id == whatsapp_message_id).first()
 
 def delete_whatsapp_log(db: Session, whatsapp_log_id: UUID):
     db_whatsapp_log = db.query(WhatsappLog).filter(WhatsappLog.id == whatsapp_log_id).first()
