@@ -69,14 +69,17 @@ async def process_whatsapp_message(entry_data: dict):
                         print(f"   - From: {sender_phone}")
                         print(f"   - ID: {message_id}")
 
-                        if message_type == "text":
-                            incoming_text = message.get("text", {}).get("body", "")
-                            print(f"   - Text: {incoming_text}")
-                            
-                            # Run agent
-                            print(f"🤖 Running agent...")
-                            reply = await run_whatsapp_agent(incoming_text, sender_phone)
-                            print(f"✉️  Agent reply: {reply}")
+                                                    if message_type == "text":
+                                                        incoming_text = message.get("text", {}).get("body", "").strip() # .strip() to handle whitespace
+                                                        print(f"   - Text: {incoming_text}")
+                                                        
+                                                        if not incoming_text:
+                                                            print("⚠️  Incoming text message is empty, skipping agent invocation.")
+                                                            continue
+                                                            
+                                                        # Run agent
+                                                        print(f"🤖 Running agent...")
+                                                        reply = await run_whatsapp_agent(incoming_text, sender_phone)                            print(f"✉️  Agent reply: {reply}")
                             
                             if not reply:
                                 print("❌ Agent returned empty response!")
