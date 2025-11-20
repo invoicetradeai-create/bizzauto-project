@@ -28,7 +28,7 @@ class User(BaseModel):
     company_id: UUID
     full_name: str
     email: str
-    password_hash: str
+    password_hash: Optional[str] = None
     role: str
     status: Optional[str] = 'active'
 

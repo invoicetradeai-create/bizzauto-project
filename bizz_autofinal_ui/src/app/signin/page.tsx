@@ -83,23 +83,15 @@ export default function SignIn() {
       return;
     }
 
+    // On success, store the user ID
+    if (data.user) {
+      localStorage.setItem("user_id", data.user.id);
+    }
+
     toast({
       title: "Welcome Back!",
       description: "Signed in successfully",
     });
-
-    if (formData.remember) {
-      localStorage.setItem("user_email", formData.email);
-      localStorage.setItem("user_name", formData.name || "User");
-      localStorage.setItem("user_role", formData.role || "User");
-    } else {
-      localStorage.removeItem("user_email");
-      localStorage.removeItem("user_name");
-      localStorage.removeItem("user_role");
-    }
-
-    const firstLetter = formData.email.charAt(0).toUpperCase();
-    localStorage.setItem("user_avatar", firstLetter);
 
     console.log("Redirecting to dashboard...");
     router.push("/dashboard");

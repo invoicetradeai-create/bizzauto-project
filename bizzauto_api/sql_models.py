@@ -66,7 +66,7 @@ class User(Base):
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
     full_name = Column(String, index=True)
     email = Column(String, unique=True, index=True)
-    password_hash = Column(String)
+    password_hash = Column(String, nullable=True)
     role = Column(String)
     status = Column(String, default='active')
 

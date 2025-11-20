@@ -25,6 +25,9 @@ def read_user(user_id: UUID, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=PydanticUser)
 def create_user_route(user: PydanticUser, db: Session = Depends(get_db)):
+    print("--- Creating User ---")
+    print(user.model_dump_json(indent=2))
+    print("---------------------")
     return create_user(db=db, user=user)
 
 @router.put("/{user_id}", response_model=PydanticUser)

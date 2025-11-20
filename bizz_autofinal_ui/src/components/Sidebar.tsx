@@ -41,37 +41,39 @@ export const NavigationContent = ({ setOpen }: { setOpen?: (open: boolean) => vo
   type UserType = { id: UUID; full_name: string; email: string; };
 
   React.useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchCurrentUserData = async (userId: string) => {
       try {
-        const usersRes = await apiClient.get<UserType[]>("/api/users");
-        const users = usersRes.data || [];
-        if (users.length > 0) {
-          const user = users[0];
+        const userRes = await apiClient.get<UserType>(`/api/users/${userId}`);
+        if (userRes.data) {
+          const user = userRes.data;
           setUserName(user.full_name);
           setUserEmail(user.email);
           setAvatarLetter(user.full_name.charAt(0).toUpperCase());
-          // Also update localStorage
+          // Also update localStorage with fresh data
           localStorage.setItem("user_name", user.full_name);
           localStorage.setItem("user_email", user.email);
           localStorage.setItem("user_avatar", user.full_name.charAt(0));
         }
       } catch (error) {
-        console.error("Failed to fetch user data for sidebar:", error);
+        console.error("Failed to fetch current user data for sidebar:", error);
       }
     };
 
     // First, try to load from localStorage for instant UI update
     const name = localStorage.getItem("user_name");
     const email = localStorage.getItem("user_email");
-    const role = localStorage.getItem("user_role");
+    const role = localStorage.getItem("user_role"); // This is still not being fetched from the backend
     const avatar = localStorage.getItem("user_avatar");
     if (name) setUserName(name);
     if (email) setUserEmail(email);
     if (role) setUserRole(role);
     if (avatar) setAvatarLetter(avatar.toUpperCase());
 
-    // Then, fetch from API to get the latest data
-    fetchUserData();
+    // Then, fetch from API to get the latest data for the logged-in user
+    const userId = localStorage.getItem("user_id");
+    if (userId) {
+      fetchCurrentUserData(userId);
+    }
   }, []);
 
   return (

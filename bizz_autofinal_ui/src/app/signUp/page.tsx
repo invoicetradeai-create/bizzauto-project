@@ -17,6 +17,7 @@ import {
 import AuthCard from "@/components/AuthCard";
 
 import { supabase } from "@/lib/supabaseClient";
+import { apiClient } from "@/lib/api-client";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -52,6 +53,15 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
+      // First, get the company ID
+      const companiesResponse = await apiClient.get("/api/companies");
+      if (companiesResponse.error || !companiesResponse.data || companiesResponse.data.length === 0) {
+        toast.error("No company configured. Please contact support.");
+        setLoading(false);
+        return;
+      }
+      const companyId = companiesResponse.data[0].id;
+
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -68,6 +78,33 @@ export default function SignUpPage() {
         toast.error(error.message);
         setLoading(false);
         return;
+      }
+
+      // After successful Supabase signup, create the user in the public.users table
+      if (data.user) {
+        const newUser = {
+          id: data.user.id,
+          company_id: companyId, // Add the company ID
+          full_name: formData.fullName,
+          email: formData.email,
+          role: formData.role,
+        };
+
+        try {
+          const apiResponse = await apiClient.post("/api/users", newUser);
+          if (apiResponse.error) {
+            console.error("API Error creating user:", apiResponse.error);
+            toast.error("An error occurred while setting up your account profile.");
+            await supabase.auth.signOut();
+            setLoading(false);
+            return;
+          }
+        } catch (apiErr: any) {
+          console.error("API Exception creating user:", apiErr);
+          toast.error(apiErr?.message || "User profile creation failed");
+          setLoading(false);
+          return;
+        }
       }
 
       toast.success("Signup successful! Please check your email to confirm.");
