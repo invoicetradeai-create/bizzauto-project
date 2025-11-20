@@ -58,10 +58,13 @@ def get_product_details(
 
         return {
             "name": product.name,
-            "description": product.description,
-            "price": float(product.price),
-            "category_id": str(product.category_id),
-            "supplier_id": str(product.supplier_id)
+            "sku": product.sku,
+            "category": product.category,
+            "purchase_price": float(product.purchase_price),
+            "sale_price": float(product.sale_price),
+            "stock_quantity": product.stock_quantity,
+            "low_stock_alert": product.low_stock_alert,
+            "unit": product.unit,
         }
 
     except Exception as e:
