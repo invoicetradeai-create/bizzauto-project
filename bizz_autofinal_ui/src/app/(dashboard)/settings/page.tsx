@@ -61,6 +61,7 @@ export default function SettingsPage() {
     profile: { fullName: "", phone: "", email: "", company: "" },
     notifications: { push: true, email: true, clientRegistration: true, paymentReceived: true, lowStock: true, overdueInvoices: true, whatsappMessage: false },
     integrations: { whatsappApi: "", gmailApi: "" },
+    alerts: { phone: "" },
   });
 
   // State to map setting keys to their database IDs
@@ -240,6 +241,24 @@ export default function SettingsPage() {
                   </div>
                   <div className="mt-8 flex justify-end">
                     <Button onClick={() => handleSave('integrations')}>Save API Keys</Button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "Alerts" && (
+                 <div className="bg-card border rounded-lg p-6">
+                  <h2 className="text-lg font-semibold mb-4">Alert Settings</h2>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="text-sm font-medium">Admin WhatsApp Number</label>
+                      <div className="relative mt-1">
+                        <Phone className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                        <input value={settings.alerts.phone} onChange={(e) => handleSettingChange('alerts', 'phone', e.target.value)} className="w-full border rounded-lg pl-9 pr-3 py-2 bg-card" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-8 flex justify-end">
+                    <Button onClick={() => handleSave('alerts')}>Save Alert Settings</Button>
                   </div>
                 </div>
               )}

@@ -40,10 +40,11 @@ class Product(Base):
     stock_quantity = Column(Integer, default=0)
     low_stock_alert = Column(Integer, default=5)
     unit = Column(String, nullable=True)
+    expiration_date = Column(DateTime(timezone=True), nullable=True)
 
     company = relationship("Company", back_populates="products")
-    invoice_items = relationship("InvoiceItem", back_populates="product")
-    purchase_items = relationship("PurchaseItem", back_populates="product")
+    invoice_items = relationship("InvoiceItem", back_populates="product", cascade="all, delete-orphan")
+    purchase_items = relationship("PurchaseItem", back_populates="product", cascade="all, delete-orphan")
 
 class Client(Base):
     __tablename__ = "clients"

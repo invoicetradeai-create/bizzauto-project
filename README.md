@@ -2,7 +2,7 @@
 1. Frontend with nextjs 16 and shadcn ui components library
 2. backend with supabase and connect it with frontend using FastAPI
 3. authentication with supabase and use mailtrap for verification
-4. whatsapp api integration on message sending and scheduling messages
+4. whatsapp api integration on message sending and scheduling messages, auto reply for product give details
 5. ocr for invoices, using redis and google vision api to extract text from images and auto create invoice record
 6. inventory and alerts automatically sent via whatsapp. daily check worker for stock summary and expiry warnings.
 7. Accounting (Basic ERP)

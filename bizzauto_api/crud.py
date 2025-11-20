@@ -20,7 +20,8 @@ from models import (
     ScheduledWhatsappMessage as PydanticScheduledWhatsappMessage
 )
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy import func
 
 def get_company(db: Session, company_id: UUID):
     return db.query(Company).filter(Company.id == company_id).first()
@@ -82,6 +83,22 @@ def delete_product(db: Session, product_id: UUID):
         db.delete(db_product)
         db.commit()
     return db_product
+
+def get_stock_summary(db: Session):
+    return db.query(Product.name, Product.stock_quantity).all()
+
+def get_alert_products(db: Session, company_id: UUID, days_to_expiry: int = 30):
+    """
+    Retrieves products that are low in stock or have an approaching expiration date.
+    """
+    current_date = datetime.utcnow()
+    expiry_threshold = current_date + timedelta(days=days_to_expiry)
+
+    return db.query(Product).filter(
+        Product.company_id == company_id,
+        ((Product.stock_quantity <= Product.low_stock_alert) |
+         (Product.expiration_date <= expiry_threshold))
+    ).all()
 
 def get_client(db: Session, client_id: UUID):
     return db.query(Client).filter(Client.id == client_id).first()

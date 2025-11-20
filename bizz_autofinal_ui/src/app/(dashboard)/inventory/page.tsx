@@ -24,6 +24,7 @@ type Product = {
   stock_quantity: number;
   unit: string;
   low_stock_alert?: number;
+  expiration_date?: string | null;
 };
 
 type Company = {
@@ -53,6 +54,8 @@ export default function InventoryPage() {
     sale_price: 0,
     stock_quantity: 0,
     unit: "pcs",
+    low_stock_alert: 5,
+    expiration_date: "",
   });
 
   // ✅ Fetch Products
@@ -88,6 +91,8 @@ export default function InventoryPage() {
       sale_price: 0,
       stock_quantity: 0,
       unit: "pcs",
+      low_stock_alert: 5,
+      expiration_date: "",
     });
     setEditingProduct(null);
   };
@@ -120,6 +125,8 @@ export default function InventoryPage() {
       purchase_price: product.purchase_price || 0,
       sale_price: product.sale_price || 0,
       stock_quantity: product.stock_quantity || 0,
+      low_stock_alert: product.low_stock_alert || 5,
+      expiration_date: product.expiration_date ? new Date(product.expiration_date).toISOString().split('T')[0] : "",
     });
     setShowForm(true);
   };
@@ -359,6 +366,18 @@ export default function InventoryPage() {
                   placeholder="Unit (e.g., pcs, kg)"
                   value={formData.unit}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                />
+                <Input
+                  placeholder="Low Stock Alert"
+                  type="number"
+                  value={formData.low_stock_alert}
+                  onChange={(e) => setFormData({ ...formData, low_stock_alert: Number(e.target.value) })}
+                />
+                <Input
+                  placeholder="Expiration Date"
+                  type="date"
+                  value={formData.expiration_date}
+                  onChange={(e) => setFormData({ ...formData, expiration_date: e.target.value })}
                 />
 
                 <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
