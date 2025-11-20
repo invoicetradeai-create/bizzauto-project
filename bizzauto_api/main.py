@@ -28,6 +28,7 @@ import routers.api.settings as settings
 import routers.api.meta_whatsapp as meta_whatsapp
 import routers.api.ocr as ocr
 import routers.api.scheduled_messages as scheduled_messages
+import routers.api.inventory as inventory
 
 from database import engine
 import sql_models
@@ -83,6 +84,7 @@ app.include_router(
 )
 app.include_router(ocr.router, prefix="/api/ocr", tags=["ocr"])
 app.include_router(scheduled_messages.router, prefix="/api", tags=["scheduled_messages"])
+app.include_router(inventory.router, prefix="/api", tags=["inventory"])
 
 # ✅ Root endpoint (for testing)
 @app.get("/")
