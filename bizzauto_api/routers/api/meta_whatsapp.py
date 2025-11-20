@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 # 1. Import SessionLocal (the factory) instead of get_db
 from database import SessionLocal 
-from crud import create_whatsapp_log, get_companies, get_whatsapp_logs, update_whatsapp_log
+from crud import create_whatsapp_log, get_companies, get_whatsapp_logs, update_whatsapp_log, get_whatsapp_log_by_whatsapp_message_id
 from models import WhatsappLog as PydanticWhatsappLog
 from redis_config import queue
 from ocr_tasks import process_invoice_image_gcp
@@ -118,32 +118,37 @@ async def process_whatsapp_message(entry_data: dict):
                 
                 elif "statuses" in value:
                     print(f"🔄 Found {len(value['statuses'])} status update(s)")
+                    status_order = {"sent": 0, "delivered": 1, "read": 2}
                     for status_update in value.get("statuses", []):
                         message_id = status_update.get("id")
-                        status = status_update.get("status")
+                        new_status = status_update.get("status")
                         timestamp = status_update.get("timestamp")
                         recipient_id = status_update.get("recipient_id")
                         
                         print(f"\n📈 Status Update Details:")
                         print(f"   - Message ID: {message_id}")
-                        print(f"   - Status: {status}")
+                        print(f"   - Status: {new_status}")
                         print(f"   - Timestamp: {timestamp}")
                         print(f"   - Recipient ID: {recipient_id}")
                         
-                        if message_id and status:
+                        if message_id and new_status:
                             # Update the WhatsappLog entry
                             log_entry = get_whatsapp_log_by_whatsapp_message_id(db, message_id)
                             if log_entry:
-                                updated_log_data = PydanticWhatsappLog(
-                                    company_id=log_entry.company_id, # Keep existing company_id
-                                    message_type=log_entry.message_type, # Keep existing message_type
-                                    whatsapp_message_id=log_entry.whatsapp_message_id, # Keep existing meta ID
-                                    phone=log_entry.phone, # Keep existing phone
-                                    message=log_entry.message, # Keep existing message
-                                    status=status # Update status
-                                )
-                                update_whatsapp_log(db, message_id, updated_log_data)
-                                print(f"✅ WhatsappLog for message ID {message_id} updated to status: {status}")
+                                current_status = log_entry.status
+                                if status_order.get(new_status, -1) > status_order.get(current_status, -1):
+                                    updated_log_data = PydanticWhatsappLog(
+                                        company_id=log_entry.company_id, # Keep existing company_id
+                                        message_type=log_entry.message_type, # Keep existing message_type
+                                        whatsapp_message_id=log_entry.whatsapp_message_id, # Keep existing meta ID
+                                        phone=log_entry.phone, # Keep existing phone
+                                        message=log_entry.message, # Keep existing message
+                                        status=new_status # Update status
+                                    )
+                                    update_whatsapp_log(db, message_id, updated_log_data)
+                                    print(f"✅ WhatsappLog for message ID {message_id} updated to status: {new_status}")
+                                else:
+                                    print(f"⏭️  Skipping out-of-order status update. Current: {current_status}, Received: {new_status}")
                             else:
                                 print(f"❌ No WhatsappLog entry found for Meta message ID: {message_id}")
                         else:
