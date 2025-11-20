@@ -40,7 +40,7 @@ export const API_ENDPOINTS = {
 
   // Meta WhatsApp
   // This now points directly to the FastAPI endpoint
-  sendMetaWhatsapp: '/api/meta-whatsapp/send-meta-whatsapp',
+  sendMetaWhatsapp: '/api/meta_whatsapp/send-meta-whatsapp',
   scheduledWhatsappMessages: '/api/scheduled-whatsapp-messages',
 
   // Dashboard

@@ -86,6 +86,10 @@ def delete_product(db: Session, product_id: UUID):
 def get_client(db: Session, client_id: UUID):
     return db.query(Client).filter(Client.id == client_id).first()
 
+def get_client_by_name(db: Session, name: str):
+    return db.query(Client).filter(Client.name == name).first()
+
+
 def get_clients(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Client).offset(skip).limit(limit).all()
 

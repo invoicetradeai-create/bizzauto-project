@@ -112,13 +112,30 @@ async def process_whatsapp_message(entry_data: dict):
 # -----------------------------
 @router.get("/webhook")
 def verify_webhook(request: Request):
+    """
+    Handles webhook verification requests from Meta.
+    Logs the incoming request and the verification result.
+    """
+    print("\n" + "="*50)
+    print("🔎 WEBHOOK VERIFICATION RECEIVED")
+    print("="*50)
+    
     params = request.query_params
     mode = params.get("hub.mode")
     token = params.get("hub.verify_token")
     challenge = params.get("hub.challenge")
+    
+    print(f"🔹 Received params: {params}")
+    print(f"🔹 Expected VERIFY_TOKEN: {VERIFY_TOKEN}")
+
     if mode == "subscribe" and token == VERIFY_TOKEN:
+        print("✅ Verification successful. Returning challenge.")
         return int(challenge)
-    raise HTTPException(status_code=403, detail="Webhook verification failed.")
+    else:
+        print("❌ Verification failed.")
+        print(f"   - Mode correct: {mode == 'subscribe'}")
+        print(f"   - Token correct: {token == VERIFY_TOKEN}")
+        raise HTTPException(status_code=403, detail="Webhook verification failed.")
 
 # -----------------------------
 
