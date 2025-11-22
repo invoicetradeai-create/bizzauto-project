@@ -36,12 +36,7 @@ services:
     dockerContext: .
     rootDir: ./bizz_autofinal_ui
     plan: free # or starter
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: bizzauto-backend
-          property: url
+    # The NEXT_PUBLIC_API_URL will be set manually in the Render dashboard
 
 databases:
   - name: bizzauto-db
