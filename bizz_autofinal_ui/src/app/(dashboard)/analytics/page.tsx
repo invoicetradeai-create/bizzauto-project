@@ -61,13 +61,13 @@ export default function AnalyticsPage() {
           apiClient.get<Invoice[]>(API_ENDPOINTS.invoices),
           apiClient.get<Client[]>(API_ENDPOINTS.clients),
           apiClient.get<Product[]>(API_ENDPOINTS.products),
-          // apiClient.get<WhatsappLog[]>(API_ENDPOINTS.whatsappLogs), // This endpoint does not exist
+          apiClient.get<WhatsappLog[]>(API_ENDPOINTS.whatsappLogs),
         ]);
 
         if (invoicesRes.data) setInvoices(invoicesRes.data);
         if (clientsRes.data) setClients(clientsRes.data);
         if (productsRes.data) setProducts(productsRes.data);
-        // if (whatsappLogsRes.data) setWhatsappLogs(whatsappLogsRes.data);
+        if (whatsappLogsRes.data) setWhatsappLogs(whatsappLogsRes.data);
 
       } catch (err) {
         setError("Failed to fetch analytics data.");
