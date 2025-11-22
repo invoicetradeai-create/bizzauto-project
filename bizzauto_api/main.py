@@ -34,6 +34,7 @@ import routers.api.accounting as accounting
 from database import engine, get_db, TestingSessionLocal, test_engine
 import sql_models
 import logging
+from redis import Redis
 
 app = FastAPI()
 
@@ -66,6 +67,13 @@ async def startup_event():
             logging.info("Database tables created successfully")
         except Exception as e:
             logging.error(f"Database initialization failed: {str(e)}")
+
+    REDIS_URL = os.getenv("REDIS_URL")
+    if REDIS_URL:
+        app.state.redis = Redis.from_url(REDIS_URL) # Initialize Redis client
+        logging.info("Redis client initialized.")
+    else:
+        logging.warning("REDIS_URL not set. Redis client not initialized.")
 
 # Dependency override for testing
 def override_get_db():

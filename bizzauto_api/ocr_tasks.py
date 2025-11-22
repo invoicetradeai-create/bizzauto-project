@@ -17,20 +17,19 @@ from database import SessionLocal
 #    In PowerShell (on Windows):
 #    $env:GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/keyfile.json"
 
-def process_invoice_image_gcp(image_path, company_id: UUID):
+def process_invoice_image_gcp(gcs_uri, company_id: UUID):
     """
-    Processes an invoice image using Google Cloud Vision API, extracts text,
+    Processes an invoice image from GCS using Google Cloud Vision API, extracts text,
     parses it, and creates an invoice record in the database.
     """
-    print(f"Processing image: {image_path}")
+    print(f"Processing image from GCS: {gcs_uri}")
 
     try:
         client = vision.ImageAnnotatorClient()
 
-        with io.open(image_path, 'rb') as image_file:
-            content = image_file.read()
-
-        image = vision.Image(content=content)
+        image = vision.Image()
+        image.source.image_uri = gcs_uri # Use GCS URI
+        
         response = client.document_text_detection(image=image)
         
         if response.error.message:
@@ -76,16 +75,13 @@ def process_invoice_image_gcp(image_path, company_id: UUID):
         finally:
             db.close()
 
-        try:
-            os.remove(image_path)
-            print(f"Successfully processed and removed {image_path}")
-        except OSError:
-            pass
+        # No need to remove the file from local storage
+        # You might want to add logic here to delete the file from GCS after processing
 
         return full_text
 
     except Exception as e:
-        print(f"Error processing image {image_path}: {e}")
+        print(f"Error processing image {gcs_uri}: {e}")
         return None
 
 
