@@ -29,8 +29,9 @@ import routers.api.meta_whatsapp as meta_whatsapp
 import routers.api.ocr as ocr
 import routers.api.scheduled_messages as scheduled_messages
 import routers.api.inventory as inventory
+import routers.api.accounting as accounting
 
-from database import engine
+from database import engine, get_db, TestingSessionLocal, test_engine
 import sql_models
 import logging
 
@@ -54,11 +55,25 @@ app.add_middleware(
 # ✅ Create database tables on startup
 @app.on_event("startup")
 async def startup_event():
+    # Check if running in test environment
+    if os.getenv("TESTING") == "True":
+        sql_models.Base.metadata.drop_all(bind=test_engine) # Need to import test_engine from database
+        sql_models.Base.metadata.create_all(bind=test_engine) # Need to import test_engine from database
+        logging.info("Test database tables created successfully")
+    else:
+        try:
+            sql_models.Base.metadata.create_all(bind=engine)
+            logging.info("Database tables created successfully")
+        except Exception as e:
+            logging.error(f"Database initialization failed: {str(e)}")
+
+# Dependency override for testing
+def override_get_db():
+    db = TestingSessionLocal()
     try:
-        sql_models.Base.metadata.create_all(bind=engine)
-        logging.info("Database tables created successfully")
-    except Exception as e:
-        logging.error(f"Database initialization failed: {str(e)}")
+        yield db
+    finally:
+        db.close()
 
 # ✅ Include all routers
 app.include_router(dashboard.router, prefix="/dashboard")
@@ -85,6 +100,7 @@ app.include_router(
 app.include_router(ocr.router, prefix="/api/ocr", tags=["ocr"])
 app.include_router(scheduled_messages.router, prefix="/api", tags=["scheduled_messages"])
 app.include_router(inventory.router, prefix="/api", tags=["inventory"])
+app.include_router(accounting.router, prefix="/api/accounting", tags=["accounting"])
 
 # ✅ Root endpoint (for testing)
 @app.get("/")

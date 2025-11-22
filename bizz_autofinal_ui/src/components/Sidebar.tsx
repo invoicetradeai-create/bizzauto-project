@@ -18,6 +18,7 @@ const menuItems = [
   { name: "OCR Upload", icon: ScanLine, path: "/ocr" },
   { name: "WhatsApp", icon: MessageSquare, path: "/whatsapp" },
   { name: "Analytics", icon: BarChart3, path: "/analytics" },
+  { name: "Accounting", icon: Receipt, path: "/accounting" }, // New item
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
 

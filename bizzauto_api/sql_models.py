@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 import uuid
+from sqlalchemy.types import JSON
 
 Base = declarative_base()
 
@@ -26,6 +27,8 @@ class Company(Base):
     whatsapp_logs = relationship("WhatsappLog", back_populates="company")
     uploaded_docs = relationship("UploadedDoc", back_populates="company")
     scheduled_whatsapp_messages = relationship("ScheduledWhatsappMessage", back_populates="company")
+    accounts = relationship("Account", back_populates="company")
+    journal_entries = relationship("JournalEntry", back_populates="company")
 
 class Product(Base):
     __tablename__ = "products"
@@ -97,10 +100,15 @@ class Invoice(Base):
     payment_status = Column(String, default='unpaid')
     notes = Column(String, nullable=True)
 
+    
+
     company = relationship("Company", back_populates="invoices")
+
     client = relationship("Client", back_populates="invoices")
+
     items = relationship("InvoiceItem", back_populates="invoice")
 
+    journal_entries = relationship("JournalEntry", back_populates="invoice")
 class InvoiceItem(Base):
     __tablename__ = "invoice_items"
 
@@ -124,10 +132,15 @@ class Purchase(Base):
     total_amount = Column(Float, default=0)
     notes = Column(String, nullable=True)
 
+    
+
     company = relationship("Company", back_populates="purchases")
+
     supplier = relationship("Supplier", back_populates="purchases")
+
     items = relationship("PurchaseItem", back_populates="purchase")
 
+    journal_entries = relationship("JournalEntry", back_populates="purchase")
 class PurchaseItem(Base):
     __tablename__ = "purchase_items"
 
@@ -152,8 +165,11 @@ class Expense(Base):
     expense_date = Column(Date)
     notes = Column(String, nullable=True)
 
+    
+
     company = relationship("Company", back_populates="expenses")
 
+    journal_entries = relationship("JournalEntry", back_populates="expense")
 class Lead(Base):
     __tablename__ = "leads"
 
@@ -201,12 +217,43 @@ class UploadedDoc(Base):
 
     company = relationship("Company", back_populates="uploaded_docs")
 
+class Account(Base):
+    __tablename__ = "accounts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    name = Column(String, index=True)
+    type = Column(String, index=True)  # e.g., Asset, Liability, Equity, Revenue, Expense
+    balance = Column(Float, default=0)
+
+    company = relationship("Company", back_populates="accounts")
+    journal_entries = relationship("JournalEntry", back_populates="account")
+
+class JournalEntry(Base):
+    __tablename__ = "journal_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id"))
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True)
+    purchase_id = Column(UUID(as_uuid=True), ForeignKey("purchases.id"), nullable=True)
+    expense_id = Column(UUID(as_uuid=True), ForeignKey("expenses.id"), nullable=True)
+    date = Column(Date)
+    debit = Column(Float, default=0)
+    credit = Column(Float, default=0)
+    
+    company = relationship("Company", back_populates="journal_entries")
+    account = relationship("Account", back_populates="journal_entries")
+    invoice = relationship("Invoice", back_populates="journal_entries")
+    purchase = relationship("Purchase", back_populates="journal_entries")
+    expense = relationship("Expense", back_populates="journal_entries")
+
 class Setting(Base):
     __tablename__ = "settings"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     key = Column(String, index=True)
-    value = Column(JSONB)
+    value = Column(JSON().with_variant(JSONB, "postgresql"))
 
     user = relationship("User", back_populates="settings")

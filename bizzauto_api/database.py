@@ -16,8 +16,23 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+# Testing Database Configuration
+# Use an in-memory SQLite database for testing to ensure tests are isolated
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test.db")
+test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+TestBase = declarative_base() # A separate Base for test models if needed, or use main Base
+
 def get_db():
     db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Dependency for testing
+def get_test_db():
+    db = TestingSessionLocal()
     try:
         yield db
     finally:

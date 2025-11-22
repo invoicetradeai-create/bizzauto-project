@@ -1,11 +1,2 @@
-fastapi
-uvicorn
-supabase
-python-dotenv
-sqlalchemy
-psycopg2-binary
-google-cloud-vision
-redis
-rq
-python-multipart
-openai
+pytest
+pytest-cov

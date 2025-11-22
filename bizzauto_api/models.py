@@ -154,6 +154,32 @@ class UploadedDoc(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class Account(BaseModel):
+    id: Optional[UUID] = None
+    company_id: UUID
+    name: str
+    type: str
+    balance: float = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+class JournalEntry(BaseModel):
+    id: Optional[UUID] = None
+    company_id: UUID
+    account_id: UUID
+    invoice_id: Optional[UUID] = None
+    purchase_id: Optional[UUID] = None
+    expense_id: Optional[UUID] = None
+    date: date
+    debit: float = 0
+    credit: float = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ExpenseReport(BaseModel):
+    category: str
+    sum: float
+
 class Setting(BaseModel):
     id: Optional[UUID] = None
     user_id: UUID
