@@ -4,7 +4,7 @@ services:
     env: docker
     repo: https://github.com/invoicetradeai-create/bizzauto-project
     region: oregon # or another region
-    dockerfilePath: ./bizzauto_api/Dockerfile
+    dockerfilePath: Dockerfile
     dockerContext: .
     rootDir: ./bizzauto_api
     plan: free # or starter
@@ -32,7 +32,7 @@ services:
     env: docker
     repo: https://github.com/invoicetradeai-create/bizzauto-project
     region: oregon
-    dockerfilePath: ./bizz_autofinal_ui/Dockerfile
+    dockerfilePath: Dockerfile
     dockerContext: .
     rootDir: ./bizz_autofinal_ui
     plan: free # or starter

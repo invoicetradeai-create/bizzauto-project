@@ -6,14 +6,14 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package.json and package-lock.json (or yarn.lock)
-COPY bizz_autofinal_ui/package.json ./package.json
-COPY bizz_autofinal_ui/package-lock.json ./package-lock.json
+COPY package.json ./package.json
+COPY package-lock.json ./package-lock.json
 
 # Install dependencies
 RUN npm install
 
 # Copy the rest of the application code
-COPY bizz_autofinal_ui/ .
+COPY . .
 
 # Build the Next.js application
 RUN npm run build

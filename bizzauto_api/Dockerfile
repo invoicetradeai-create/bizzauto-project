@@ -7,11 +7,11 @@ FROM python:3.10-slim-buster
 WORKDIR /app
 
 # Copy the requirements file and install dependencies
-COPY bizzauto_api/requirements.txt ./requirements.txt
+COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire backend application code
-COPY bizzauto_api/ .
+COPY . .
 
 # Expose the port the app runs on
 EXPOSE 8000
