@@ -55,13 +55,10 @@ const Dashboard = () => {
       setError(null);
       try {
         const response = await apiClient.get<DashboardSummary>('/dashboard/summary');
-        if (response.data) {
-          setSummary(response.data);
-        } else {
-          throw new Error(response.error || "Failed to fetch dashboard summary");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
+        setSummary(response.data);
+      } catch (err: any) {
+        setError(err.response?.data?.detail || err.message || "Failed to fetch dashboard summary");
+        console.error("Error fetching dashboard summary:", err);
       } finally {
         setLoading(false);
       }
