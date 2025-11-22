@@ -60,15 +60,26 @@ export default function InventoryPage() {
 
   // ✅ Fetch Products
   const fetchProducts = async () => {
-    const response = await apiClient.get(API_ENDPOINTS.products);
-    if (response.error) setError(response.error);
-    else setProducts(Array.isArray(response.data) ? response.data : []);
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.products);
+      setProducts(Array.isArray(response.data) ? response.data : []);
+      setError(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || "Failed to fetch products.");
+      console.error("Error fetching products:", err);
+    }
   };
 
   const fetchCompanies = async () => {
-    const response = await apiClient.get(API_ENDPOINTS.companies);
-    if (response.data && Array.isArray(response.data)) {
-      setCompanies(response.data);
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.companies);
+      if (response.data && Array.isArray(response.data)) {
+        setCompanies(response.data);
+      }
+      setError(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || "Failed to fetch companies.");
+      console.error("Error fetching companies:", err);
     }
   };
 
@@ -105,12 +116,14 @@ export default function InventoryPage() {
       return;
     }
     const newProduct = { ...formData, company_id: companyId };
-    const response = await apiClient.post(API_ENDPOINTS.products, newProduct);
-    if (response.error) alert(`Create failed: ${response.error}`);
-    else {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.products, newProduct);
       alert("✅ Product created successfully!");
       setShowForm(false);
       fetchProducts();
+    } catch (err: any) {
+      alert(`Create failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error creating product:", err);
     }
   };
 
@@ -144,21 +157,27 @@ export default function InventoryPage() {
     const { id, ...updateData } = formData;
     const payload = { ...updateData, company_id: companyId };
 
-    const response = await apiClient.put(`${API_ENDPOINTS.products}/${editingProduct.id}`, payload);
-    if (response.error) alert(`Update failed: ${response.error}`);
-    else {
+    try {
+      const response = await apiClient.put(`${API_ENDPOINTS.products}/${editingProduct.id}`, payload);
       alert("✅ Product updated successfully!");
       setShowForm(false);
       fetchProducts();
+    } catch (err: any) {
+      alert(`Update failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error updating product:", err);
     }
   };
 
   const handleDelete = async (id?: string) => {
     if (!id) return;
     if (!confirm("Are you sure you want to delete this product?")) return;
-    const response = await apiClient.delete(`${API_ENDPOINTS.products}/${id}`);
-    if (response.error) alert(`Delete failed: ${response.error}`);
-    else fetchProducts();
+    try {
+      const response = await apiClient.delete(`${API_ENDPOINTS.products}/${id}`);
+      fetchProducts();
+    } catch (err: any) {
+      alert(`Delete failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error deleting product:", err);
+    }
   };
 
   const filtered = products.filter(

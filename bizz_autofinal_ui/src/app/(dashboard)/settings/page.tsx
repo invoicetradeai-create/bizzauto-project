@@ -105,11 +105,13 @@ export default function SettingsPage() {
 
           setSettings(prev => ({ ...prev, ...newSettings }));
           setSettingsMap(newSettingsMap);
-        } else if (settingsRes.error) {
-          throw new Error(settingsRes.error);
+        } else {
+          // If no data, but no error thrown by Axios, it's an empty response
+          // This case should ideally not throw an error, but just initialize with defaults
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
+      } catch (err: any) { // Catch block already exists
+        setError(err.response?.data?.detail || err.message || "An unknown error occurred");
+        console.error("Error fetching settings:", err);
       } finally {
         setLoading(false);
       }
@@ -140,19 +142,18 @@ export default function SettingsPage() {
       value: settings[key],
     };
 
-    let response;
-    if (settingId) {
-      // Update existing setting
-      response = await apiClient.put(`/tables/settings/${settingId}`, data);
-    } else {
-      // Create new setting
-      response = await apiClient.post('/tables/settings/', data);
-    }
-
-    if (response.data) {
+    try {
+      if (settingId) {
+        // Update existing setting
+        await apiClient.put(`/tables/settings/${settingId}`, data);
+      } else {
+        // Create new setting
+        await apiClient.post('/tables/settings/', data);
+      }
       alert(`${key.charAt(0).toUpperCase() + key.slice(1)} settings saved!`);
-    } else {
-      alert(`Error saving ${key} settings: ${JSON.stringify(response.error)}`);
+    } catch (err: any) {
+      alert(`Error saving ${key} settings: ${err.response?.data?.detail || err.message}`);
+      console.error("Error saving settings:", err);
     }
   };
 

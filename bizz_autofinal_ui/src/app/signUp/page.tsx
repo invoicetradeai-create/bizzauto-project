@@ -54,15 +54,21 @@ export default function SignUpPage() {
 
     try {
       // First, get the company ID
-      const companiesResponse = await apiClient.get("/api/companies");
-      if (companiesResponse.error || !companiesResponse.data || companiesResponse.data.length === 0) {
-        toast.error("No company configured. Please contact support.");
+      let companyId;
+      try {
+        const companiesResponse = await apiClient.get("/api/companies");
+        if (!companiesResponse.data || companiesResponse.data.length === 0) {
+          throw new Error("No company configured. Please contact support.");
+        }
+        companyId = companiesResponse.data[0].id;
+      } catch (companyErr: any) {
+        toast.error(companyErr.message || "Failed to fetch company information.");
         setLoading(false);
         return;
       }
-      const companyId = companiesResponse.data[0].id;
 
-      const { data, error } = await supabase.auth.signUp({
+
+      const { data, error: supabaseError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -74,8 +80,8 @@ export default function SignUpPage() {
         },
       });
 
-      if (error) {
-        toast.error(error.message);
+      if (supabaseError) {
+        toast.error(supabaseError.message);
         setLoading(false);
         return;
       }
@@ -91,17 +97,11 @@ export default function SignUpPage() {
         };
 
         try {
-          const apiResponse = await apiClient.post("/api/users", newUser);
-          if (apiResponse.error) {
-            console.error("API Error creating user:", apiResponse.error);
-            toast.error("An error occurred while setting up your account profile.");
-            await supabase.auth.signOut();
-            setLoading(false);
-            return;
-          }
+          await apiClient.post("/api/users", newUser);
         } catch (apiErr: any) {
           console.error("API Exception creating user:", apiErr);
-          toast.error(apiErr?.message || "User profile creation failed");
+          toast.error(apiErr.response?.data?.detail || apiErr.message || "User profile creation failed");
+          await supabase.auth.signOut(); // Rollback Supabase signup if API user creation fails
           setLoading(false);
           return;
         }
@@ -110,8 +110,11 @@ export default function SignUpPage() {
       toast.success("Signup successful! Please check your email to confirm.");
       setLoading(false);
       router.push("/signin");
-    } catch (err: any) {
-      toast.error(err?.message || "Signup failed");
+    } catch (err: any) { // This catch block handles errors from Supabase signup or unexpected errors
+      // Already handled supabaseError, this is for any unhandled exceptions
+      if (!err.message.includes("Failed to fetch company information") && !err.message.includes("User profile creation failed")) {
+        toast.error(err?.message || "Signup failed");
+      }
       setLoading(false);
     }
   };

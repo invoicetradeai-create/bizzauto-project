@@ -43,11 +43,10 @@ export default function InvoicesPage() {
       const response = await apiClient.get<Invoice[]>('/api/invoices');
       if (response.data) {
         setInvoices(response.data);
-      } else if (response.error) {
-        throw new Error(response.error);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch invoices");
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || "Failed to fetch invoices");
+      console.error("Error fetching invoices:", err);
     } finally {
       setLoading(false);
     }
@@ -58,42 +57,48 @@ export default function InvoicesPage() {
   }, [fetchInvoices]);
 
   const handleFormSubmit = async (invoiceData: Omit<Invoice, 'id' | 'company_id'>) => {
-    if (editingInvoice) {
-      // Update logic
-      const response = await apiClient.put<Invoice>(`/api/invoices/${editingInvoice.id}`, invoiceData);
-      if (response.data) {
-        await fetchInvoices();
-        setIsSheetOpen(false);
-        setEditingInvoice(null);
+    try {
+      if (editingInvoice) {
+        // Update logic
+        const response = await apiClient.put<Invoice>(`/api/invoices/${editingInvoice.id}`, invoiceData);
+        if (response.data) {
+          await fetchInvoices();
+          setIsSheetOpen(false);
+          setEditingInvoice(null);
+        }
       } else {
-        setError(response.error || "Failed to update invoice.");
+        // Create logic
+        const companyId = invoices.length > 0 ? invoices[0].company_id : "00000000-0000-0000-0000-000000000000";
+        if (companyId === "00000000-0000-0000-0000-000000000000" && invoices.length === 0) {
+          setError("Cannot create invoice: No company context available.");
+          setIsSheetOpen(false);
+          return;
+        }
+        const newInvoice = { ...invoiceData, company_id: companyId as UUID };
+        const response = await apiClient.post<Invoice>('/api/invoices', newInvoice);
+        if (response.data) {
+          await fetchInvoices();
+          setIsSheetOpen(false);
+        }
       }
-    } else {
-      // Create logic
-      const companyId = invoices.length > 0 ? invoices[0].company_id : "00000000-0000-0000-0000-000000000000";
-      if (companyId === "00000000-0000-0000-0000-000000000000" && invoices.length === 0) {
-        setError("Cannot create invoice: No company context available.");
-        setIsSheetOpen(false);
-        return;
-      }
-      const newInvoice = { ...invoiceData, company_id: companyId as UUID };
-      const response = await apiClient.post<Invoice>('/api/invoices', newInvoice);
-      if (response.data) {
-        await fetchInvoices();
-        setIsSheetOpen(false);
-      } else {
-        setError(response.error || "Failed to create invoice.");
-      }
+      setError(null); // Clear any previous errors on successful submit
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || (editingInvoice ? "Failed to update invoice." : "Failed to create invoice."));
+      console.error("Error submitting invoice:", err);
     }
   };
 
   const handleDeleteInvoice = async (invoiceId: UUID) => {
     if (window.confirm("Are you sure you want to delete this invoice?")) {
-      const response = await apiClient.delete(`/api/invoices/${invoiceId}`);
-      if (response.status === 200 || response.status === 204) {
-        await fetchInvoices();
-      } else {
-        setError(response.error || "Failed to delete invoice.");
+      try {
+        const response = await apiClient.delete(`/api/invoices/${invoiceId}`);
+        if (response.status === 200 || response.status === 204) {
+          await fetchInvoices();
+        }
+        setError(null);
+      } catch (err: any) {
+        setError(err.response?.data?.detail || err.message || "Failed to delete invoice.");
+        console.error("Error deleting invoice:", err);
       }
     }
   };

@@ -61,14 +61,11 @@ export default function WhatsappPage() {
     setIsLoadingMessages(true);
     setFetchMessagesError(null);
     try {
-      const response: ApiResponse<ScheduledMessage[]> = await apiClient.get(API_ENDPOINTS.scheduledWhatsappMessages);
-      if (response.error) {
-        setFetchMessagesError(response.error);
-      } else {
-        setScheduledMessages(response.data || []);
-      }
-    } catch (err) {
-      setFetchMessagesError((err as Error).message);
+      const response = await apiClient.get<ScheduledMessage[]>(API_ENDPOINTS.scheduledWhatsappMessages);
+      setScheduledMessages(response.data || []);
+    } catch (err: any) {
+      setFetchMessagesError(err.response?.data?.detail || err.message || "Failed to fetch scheduled messages.");
+      console.error("Error fetching scheduled messages:", err);
     } finally {
       setIsLoadingMessages(false);
     }
@@ -81,16 +78,13 @@ export default function WhatsappPage() {
     setSendError(null);
     setSendSuccess(null);
     try {
-      const response: ApiResponse<any> = await apiClient.post(API_ENDPOINTS.sendMetaWhatsapp, { to, body });
-      if (response.error) {
-        setSendError(`Failed to send: ${response.error}`);
-      } else {
-        setSendSuccess('Message sent successfully!');
-        setTo('');
-        setBody('');
-      }
-    } catch (err) {
-      setSendError(`An error occurred: ${(err as Error).message}`);
+      const response = await apiClient.post(API_ENDPOINTS.sendMetaWhatsapp, { to, body });
+      setSendSuccess('Message sent successfully!');
+      setTo('');
+      setBody('');
+    } catch (err: any) {
+      setSendError(`An error occurred: ${err.response?.data?.detail || err.message}`);
+      console.error("Error sending message:", err);
     } finally {
       setIsSending(false);
     }
@@ -109,18 +103,15 @@ export default function WhatsappPage() {
         message: scheduleBody,
         scheduled_at,
       };
-      const response: ApiResponse<ScheduledMessage> = await apiClient.post(API_ENDPOINTS.scheduledWhatsappMessages, payload);
-      if (response.error) {
-        setScheduleError(`Failed to schedule: ${response.error}`);
-      } else {
-        setScheduleSuccess('Message scheduled successfully!');
-        setScheduleTo('');
-        setScheduleBody('');
-        setScheduleDateTime('');
-        fetchScheduledMessages(); // Refresh the list
-      }
-    } catch (err) {
-      setScheduleError(`An error occurred: ${(err as Error).message}`);
+      const response = await apiClient.post(API_ENDPOINTS.scheduledWhatsappMessages, payload);
+      setScheduleSuccess('Message scheduled successfully!');
+      setScheduleTo('');
+      setScheduleBody('');
+      setScheduleDateTime('');
+      fetchScheduledMessages(); // Refresh the list
+    } catch (err: any) {
+      setScheduleError(`An error occurred: ${err.response?.data?.detail || err.message}`);
+      console.error("Error scheduling message:", err);
     } finally {
       setIsScheduling(false);
     }

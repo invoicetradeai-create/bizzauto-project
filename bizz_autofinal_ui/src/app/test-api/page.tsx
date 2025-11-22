@@ -34,15 +34,12 @@ export default function TestApiPage() {
   const testHealth = async () => {
     try {
       console.log('Testing health endpoint...');
-      const response: ApiResponse<any> = await apiClient.get(API_ENDPOINTS.health);
-
-      if (response.error) {
-        setError(`Health check failed: ${response.error}`);
-      } else {
-        setHealthStatus(response.data);
-      }
-    } catch (err) {
-      setError(`Health check error: ${(err as Error).message}`);
+      const response = await apiClient.get(API_ENDPOINTS.health);
+      setHealthStatus(response.data);
+      setError(null);
+    } catch (err: any) {
+      setError(`Health check failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error testing health:", err);
     }
   };
 
@@ -50,18 +47,16 @@ export default function TestApiPage() {
   const testProducts = async () => {
     try {
       console.log('Testing products endpoint...');
-      const response: ApiResponse<Product[] | unknown> = await apiClient.get(API_ENDPOINTS.products);
-
-      if (response.error) {
-        setError(`Products fetch failed: ${response.error}`);
-      } else if (Array.isArray(response.data)) {
+      const response = await apiClient.get<Product[]>(API_ENDPOINTS.products);
+      if (Array.isArray(response.data)) {
         setProducts(response.data);
       } else {
-        // Defensive fallback if API returns object instead of array
         setProducts([]);
       }
-    } catch (err) {
-      setError(`Products fetch error: ${(err as Error).message}`);
+      setError(null);
+    } catch (err: any) {
+      setError(`Products fetch failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error fetching products:", err);
     }
   };
 
@@ -80,16 +75,13 @@ export default function TestApiPage() {
         unit: 'pcs',
       };
 
-      const response: ApiResponse<Product> = await apiClient.post(API_ENDPOINTS.products, newProduct);
+      const response = await apiClient.post(API_ENDPOINTS.products, newProduct);
 
-      if (response.error) {
-        alert(`Create failed: ${response.error}`);
-      } else {
-        alert('✅ Product created successfully!');
-        testProducts(); // Refresh list
-      }
-    } catch (err) {
-      alert(`Error creating product: ${(err as Error).message}`);
+      alert('✅ Product created successfully!');
+      testProducts(); // Refresh list
+    } catch (err: any) {
+      alert(`Create failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error creating product:", err);
     }
   };
 
