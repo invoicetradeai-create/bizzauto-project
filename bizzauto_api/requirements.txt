@@ -1,4 +1,11 @@
-pytest
-pytest-cov
+fastapi
+uvicorn
+sqlalchemy
 redis
 python-dotenv
+supabase-py
+google-cloud-vision
+google-cloud-storage
+pytest
+pytest-cov
+psycopg2-binary
