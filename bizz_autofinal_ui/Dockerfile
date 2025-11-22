@@ -1,7 +1,7 @@
 # Dockerfile for the Next.js frontend
 
 # Stage 1: Build the Next.js application
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
