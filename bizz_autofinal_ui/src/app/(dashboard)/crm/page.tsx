@@ -47,15 +47,27 @@ export default function CRMPage() {
   });
 
   const fetchClients = async () => {
-    const response = await apiClient.get(API_ENDPOINTS.clients);
-    if (response.error) setError(response.error);
-    else setClients(Array.isArray(response.data) ? response.data : []);
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.clients);
+      setClients(Array.isArray(response.data) ? response.data : []);
+      setError(null); // Clear any previous errors
+    } catch (err: any) {
+      // Axios errors are typically in err.response.data or err.message
+      setError(err.response?.data?.detail || err.message || "Failed to fetch clients.");
+      console.error("Error fetching clients:", err);
+    }
   };
 
   const fetchCompanies = async () => {
-    const response = await apiClient.get(API_ENDPOINTS.companies);
-    if (response.data && Array.isArray(response.data)) {
-      setCompanies(response.data);
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.companies);
+      if (response.data && Array.isArray(response.data)) {
+        setCompanies(response.data);
+      }
+      setError(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || "Failed to fetch companies.");
+      console.error("Error fetching companies:", err);
     }
   };
 
@@ -81,12 +93,14 @@ export default function CRMPage() {
       return;
     }
     const newClient = { ...formData, company_id: companyId };
-    const response = await apiClient.post(API_ENDPOINTS.clients, newClient);
-    if (response.error) alert(`Create failed: ${response.error}`);
-    else {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.clients, newClient);
       alert("✅ Client created successfully!");
       setShowForm(false);
       fetchClients();
+    } catch (err: any) {
+      alert(`Create failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error creating client:", err);
     }
   };
 
@@ -113,21 +127,27 @@ export default function CRMPage() {
     
     const payload = { ...formData, company_id: companyId };
 
-    const response = await apiClient.put(`${API_ENDPOINTS.clients}/${editingClient.id}`, payload);
-    if (response.error) alert(`Update failed: ${response.error}`);
-    else {
+    try {
+      const response = await apiClient.put(`${API_ENDPOINTS.clients}/${editingClient.id}`, payload);
       alert("✅ Client updated successfully!");
       setShowForm(false);
       fetchClients();
+    } catch (err: any) {
+      alert(`Update failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error updating client:", err);
     }
   };
 
   const handleDelete = async (id?: string) => {
     if (!id) return;
     if (!confirm("Are you sure you want to delete this client?")) return;
-    const response = await apiClient.delete(`${API_ENDPOINTS.clients}/${id}`);
-    if (response.error) alert(`Delete failed: ${response.error}`);
-    else fetchClients();
+    try {
+      const response = await apiClient.delete(`${API_ENDPOINTS.clients}/${id}`);
+      fetchClients();
+    } catch (err: any) {
+      alert(`Delete failed: ${err.response?.data?.detail || err.message}`);
+      console.error("Error deleting client:", err);
+    }
   };
 
   const filtered = clients.filter(
