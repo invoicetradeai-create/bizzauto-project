@@ -395,7 +395,7 @@ export default function InventoryPage() {
                 <Input
                   placeholder="Expiration Date"
                   type="date"
-                  value={formData.expiration_date}
+                  value={formData.expiration_date || ""}
                   onChange={(e) => setFormData({ ...formData, expiration_date: e.target.value })}
                 />
 
