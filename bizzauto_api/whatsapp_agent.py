@@ -1,3 +1,9 @@
+import openai
+print("OpenAI version:", openai.__version__)
+
+import pkgutil
+print("Agents loaded?", pkgutil.find_loader("openai.agents"))
+
 from openai import AsyncOpenAI, OpenAI
 from openai.agents import Agent, Runner, function_tool, SQLiteSession
 import os
