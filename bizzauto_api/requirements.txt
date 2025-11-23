@@ -3,7 +3,7 @@ uvicorn
 sqlalchemy
 redis
 python-dotenv
-supabase-py
+supabase
 google-cloud-vision
 google-cloud-storage
 pytest
