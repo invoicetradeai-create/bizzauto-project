@@ -5,8 +5,7 @@ from uuid import UUID
 from dotenv import load_dotenv, find_dotenv
 
 from openai import AsyncOpenAI
-from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIChatModel
+from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, SQLiteSession
 
 from database import SessionLocal
 import crud
@@ -27,7 +26,7 @@ external_client = AsyncOpenAI(
 )
 
 # LLM Model Wrapper
-llm_model = OpenAIChatModel(
+llm_model = OpenAIChatCompletionsModel(
     model="gemini-2.5-flash",
     openai_client=external_client
 )
@@ -36,7 +35,7 @@ llm_model = OpenAIChatModel(
 # ============================
 # 2. Product Lookup Tool
 # ============================
-@agent.tool
+@function_tool
 def get_product_details(
     product_name: str | None = None,
     product_id: int | None = None
@@ -117,10 +116,6 @@ agent = Agent(
 )
 
 
-# In-memory store for chat histories
-chat_histories = {}
-
-
 # ============================
 # 4. Runner Wrapper (Async)
 # ============================
@@ -128,15 +123,14 @@ async def run_whatsapp_agent(message: str, phone_number: str) -> str:
     """
     Now accepts phone_number to maintain unique chat history for each user.
     """
-    # Retrieve chat history for the user
-    history = chat_histories.get(phone_number, [])
+    # Create a persistent session object for the user (phone number)
+    session = SQLiteSession(session_id=phone_number, db_path="whatsapp_sessions.db")
     
-    # Run the agent with the user's chat history
-    result = await agent.run(message, chat_history=history)
-    
-    # Update the chat history for the user
-    chat_histories[phone_number] = result.chat_history
-    
-    return result.data
+    result = await Runner.run(
+        agent, 
+        message, 
+        session=session
+    ) 
+    return result.final_output
 
 
