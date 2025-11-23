@@ -48,3 +48,27 @@ databases:
   - name: bizzauto-redis
     plan: free
     region: oregon
+
+  - type: worker
+    name: bizzauto-scheduler
+    env: docker
+    repo: https://github.com/invoicetradeai-create/bizzauto-project
+    region: oregon
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    rootDir: ./bizzauto_api
+    plan: free
+    command: python scheduler_worker.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bizzauto-db
+          property: connectionString
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: PHONE_NUMBER_ID
+        sync: false
