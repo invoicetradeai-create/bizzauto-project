@@ -117,6 +117,10 @@ agent = Agent(
 )
 
 
+# In-memory store for chat histories
+chat_histories = {}
+
+
 # ============================
 # 4. Runner Wrapper (Async)
 # ============================
@@ -124,7 +128,15 @@ async def run_whatsapp_agent(message: str, phone_number: str) -> str:
     """
     Now accepts phone_number to maintain unique chat history for each user.
     """
-    result = await agent.run(message) 
+    # Retrieve chat history for the user
+    history = chat_histories.get(phone_number, [])
+    
+    # Run the agent with the user's chat history
+    result = await agent.run(message, chat_history=history)
+    
+    # Update the chat history for the user
+    chat_histories[phone_number] = result.chat_history
+    
     return result.data
 
 
