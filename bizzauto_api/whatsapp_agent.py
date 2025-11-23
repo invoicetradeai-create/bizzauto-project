@@ -13,8 +13,11 @@ def get_product_details(
     product_id: int | None = None
 ) -> dict:
     """
-    Retrieve details of a product from the database.
+    Use this function to retrieve details of a product from the database. 
+    You should call this function whenever a user asks about a product, including its price, availability, or stock count. 
+    Treat single-word messages as potential product names.
     """
+    print(f"🔎 Getting product details for: {product_name or product_id}")
 
     db = SessionLocal()
     try:
@@ -23,11 +26,14 @@ def get_product_details(
         elif product_name:
             product = crud.get_product_by_name(db, name=product_name)
         else:
+            print("⚠️ Product name or ID not provided.")
             return {"error": "Provide product_name or product_id"}
 
         if not product:
+            print(f"❌ Product '{product_name}' not found in database.")
             return {"error": "Product not found"}
 
+        print(f"✅ Product '{product.name}' found.")
         return {
             "name": product.name,
             "sku": product.sku,
@@ -40,6 +46,7 @@ def get_product_details(
         }
 
     except Exception as e:
+        print(f"💥 Error fetching product: {str(e)}")
         return {"error": f"Error fetching product: {str(e)}"}
 
     finally:
@@ -57,10 +64,11 @@ genai.configure(api_key=api_key)
 
 # Define the system instructions
 system_instructions = (
-    """You are the friendly and helpful WhatsApp assistant for BizzAuto. Your goal is to assist customers with auto parts while maintaining a warm, soft, and polite tone.
+    """You are the friendly and helpful WhatsApp assistant for BizzAuto. Your goal is to assist customers with products while maintaining a warm, soft, and polite tone.
 
 **CORE BEHAVIORS:**
-1.  **Tool Usage:** When a user asks about a product, ALWAYS first call `get_product_details` to retrieve the data.
+1.  **Tool Usage:** When a user asks about a product, including single-word queries, ALWAYS first call `get_product_details` to retrieve the data.
+1.5. **Query Interpretation:** Treat single-word messages or short phrases (e.g., "Chocolate", "Brake pads price") as implicit product queries and use the get_product_details tool.
 2.  **Tone:** Be conversational but concise. Use soft language (e.g., "Happy to help," "Apologies," "Great news") and occasional emojis (🚗, 🔧, ✅) to make the chat feel personal.
 3.  **Silence Policy:** ONLY respond if there is a clear question, request, or explicit intent from the user that you can address with your tools or information. If the user's message is purely conversational, a greeting, or lacks a clear query, DO NOT respond.
 
@@ -91,7 +99,7 @@ system_instructions = (
 
 # Create the GenerativeModel instance
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash-latest',
+    model_name='gemini-2.5-flash',
     system_instruction=system_instructions,
     tools=[get_product_details]
 )
@@ -124,21 +132,21 @@ async def run_whatsapp_agent(message: str, phone_number: str) -> str:
             # Extract arguments and call the actual function
             args = {key: value for key, value in function_call.args.items()}
             tool_result = get_product_details(**args)
-            
+            print(f"🛠️ Tool result: {tool_result}")
+
             # Send the function's result back to the model
             response = await chat.send_message_async(
-                genai.Part.from_function_response(
-                    name='get_product_details',
-                    response=tool_result,
-                ),
+                f"Tool get_product_details returned: {json.dumps(tool_result)}"
             )
+            print(f"🤖 Agent response after tool call: {response}")
 
         # The final response from the model after the tool call
         return response.text
 
-    except (ValueError, AttributeError):
-        # This occurs if the response does not contain a function call.
-        # It means the model responded directly with text.
-        return response.text
+    except (ValueError, AttributeError, IndexError):
+        try:
+            return response.text
+        except ValueError:
+            return ""
 
     return "Sorry, I encountered an issue. Please try again."
