@@ -1,20 +1,13 @@
-import openai
-print("OpenAI version:", openai.__version__)
-
-import pkgutil
-print("Agents loaded?", pkgutil.find_loader("openai_agents"))
-
-from openai import AsyncOpenAI, OpenAI
-from openai_agents import Agent, Runner, function_tool, SQLiteSession
+import google.generativeai as genai
 import os
 from database import SessionLocal
 import crud
 from uuid import UUID
+import json
 
 # ============================
-# 2. Product Lookup Tool
+# 1. Product Lookup Tool
 # ============================
-@function_tool
 def get_product_details(
     product_name: str | None = None,
     product_id: int | None = None
@@ -54,14 +47,17 @@ def get_product_details(
 
 
 # ============================
-# 3. Create Agent
+# 2. Configure Generative Model
 # ============================
-agent = Agent(
-    name="whatsapp_product_agent",
-    model="gemini-2.5-flash",
-    tools=[get_product_details],
-    instructions=(
-        """You are the friendly and helpful WhatsApp assistant for BizzAuto. Your goal is to assist customers with auto parts while maintaining a warm, soft, and polite tone.
+# Configure the Gemini API key
+api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key:
+    raise ValueError("GEMINI_API_KEY environment variable not set.")
+genai.configure(api_key=api_key)
+
+# Define the system instructions
+system_instructions = (
+    """You are the friendly and helpful WhatsApp assistant for BizzAuto. Your goal is to assist customers with auto parts while maintaining a warm, soft, and polite tone.
 
 **CORE BEHAVIORS:**
 1.  **Tool Usage:** When a user asks about a product, ALWAYS first call `get_product_details` to retrieve the data.
@@ -91,23 +87,58 @@ agent = Agent(
     - Check the product data for a `discount_active` flag or compare `sale_price` vs `original_price`.
     - **If a discount exists:** "You're in luck! 🎉 This item is already on a special offer at [sale_price]."
     - **If NO discount exists:** "Our prices are already set to the best possible wholesale rate, so I can't offer a further discount on this specific item. I hope you understand! 🙏"""
-    )
 )
 
+# Create the GenerativeModel instance
+model = genai.GenerativeModel(
+    model_name='gemini-1.5-flash-latest',
+    system_instruction=system_instructions,
+    tools=[get_product_details]
+)
+
+# In-memory chat history
+chat_sessions = {}
 
 # ============================
-# 4. Runner Wrapper (Async)
+# 3. Runner Wrapper (Async)
 # ============================
 async def run_whatsapp_agent(message: str, phone_number: str) -> str:
     """
-    Now accepts phone_number to maintain unique chat history for each user.
+    Accepts a message and phone_number to maintain a chat history for each user.
+    Uses Gemini for function calling to respond to the user.
     """
-    # Create a persistent session object for the user (phone number)
-    session = SQLiteSession(session_id=phone_number, db_path="whatsapp_sessions.db")
+    # Get or create a chat session for the user
+    if phone_number not in chat_sessions:
+        chat_sessions[phone_number] = model.start_chat()
     
-    result = await Runner.run(
-        agent, 
-        message, 
-        session=session
-    ) 
-    return result.final_output
+    chat = chat_sessions[phone_number]
+
+    # Send the user message to the model
+    response = await chat.send_message_async(message)
+    
+    try:
+        # Check if the model wants to call a function
+        function_call = response.candidates[0].content.parts[0].function_call
+        
+        if function_call.name == 'get_product_details':
+            # Extract arguments and call the actual function
+            args = {key: value for key, value in function_call.args.items()}
+            tool_result = get_product_details(**args)
+            
+            # Send the function's result back to the model
+            response = await chat.send_message_async(
+                genai.Part.from_function_response(
+                    name='get_product_details',
+                    response=tool_result,
+                ),
+            )
+
+        # The final response from the model after the tool call
+        return response.text
+
+    except (ValueError, AttributeError):
+        # This occurs if the response does not contain a function call.
+        # It means the model responded directly with text.
+        return response.text
+
+    return "Sorry, I encountered an issue. Please try again."

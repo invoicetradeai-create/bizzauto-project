@@ -119,7 +119,7 @@ export default function TestApiPage() {
           <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
             <p className="text-sm text-red-700 font-medium">{error}</p>
             <p className="text-xs text-red-600 mt-1">
-              Make sure your backend is running at: <strong>http://localhost:8000</strong>
+              Make sure your backend is running at: <strong>https://bizzauto-project.onrender.com</strong>
             </p>
           </div>
         )}
@@ -192,7 +192,7 @@ export default function TestApiPage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between p-2 hover:bg-gray-50 rounded">
               <span className="text-gray-600">Backend URL:</span>
-              <span className="font-mono text-blue-600">http://localhost:8000</span>
+              <span className="font-mono text-blue-600">https://bizzauto-project.onrender.com</span>
             </div>
             <div className="flex justify-between p-2 hover:bg-gray-50 rounded">
               <span className="text-gray-600">Health:</span>
@@ -205,7 +205,7 @@ export default function TestApiPage() {
             <div className="flex justify-between p-2 hover:bg-gray-50 rounded">
               <span className="text-gray-600">API Docs:</span>
               <a
-                href="http://localhost:8000/docs"
+                href="https://bizzauto-project.onrender.com/docs"
                 target="_blank"
                 className="font-mono text-blue-600 hover:underline"
               >

@@ -1,9 +1,3 @@
-import openai
-import pkgutil
-
-print("OpenAI version:", openai.__version__)
-print("Has agents?", pkgutil.find_loader("openai.agents"))
-
 from dotenv import load_dotenv
 import sys
 import os
@@ -49,8 +43,7 @@ app = FastAPI()
 
 # ✅ Frontend URLs allowed during development
 origins = [
-    "http://localhost:3000",  # for Next.js frontend
-    "http://localhost:5173",  # for Vite React frontend
+    "*",
 ]
 
 # ✅ Add CORS middleware

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "@/hooks/use-theme";
-
+import { apiClient } from "@/lib/api-client";
 
 export default function OcrUploadPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -50,30 +50,28 @@ export default function OcrUploadPage() {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8000/api/ocr/upload", {
-        method: "POST",
-        body: formData,
+      const response = await apiClient.post("/api/ocr/upload", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Something went wrong");
-      }
+      const data = response.data;
 
       setStatus("success");
       setMessage(`File '${data.filename}' uploaded and queued for processing.`);
-      // Reset file input if needed, by managing its value or re-rendering the form
       const fileInput = document.getElementById('invoice-file') as HTMLInputElement;
       if(fileInput) fileInput.value = "";
       setFile(null);
 
-    } catch (error) {
+    } catch (error: any) {
       setStatus("error");
-      if (error instanceof Error) {
-        setMessage(`Upload failed: ${error.message}`);
+      if (error.response) {
+        setMessage(`Upload failed: ${error.response.data.detail || "Server error"}`);
+      } else if (error.request) {
+        setMessage("Upload failed: No response from server.");
       } else {
-        setMessage("An unknown error occurred.");
+        setMessage(`Upload failed: ${error.message}`);
       }
       console.error("Upload error:", error);
     }
