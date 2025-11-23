@@ -88,7 +88,7 @@ async def process_whatsapp_message(entry_data: dict):
 
                             # Send reply
                             print(f"📤 Sending to: {sender_phone}")
-                            send_result = await send_reply(to=sender_phone, message=reply)
+                            send_result = await send_reply(to=sender_phone, message=reply["response"])
                             print(f"📬 Send result: {send_result}")
 
                             whatsapp_message_id = None
@@ -109,7 +109,7 @@ async def process_whatsapp_message(entry_data: dict):
                                     message_type="text", # Outgoing message
                                     whatsapp_message_id=whatsapp_message_id,
                                     phone=sender_phone,
-                                    message=reply,
+                                    message=reply["response"],
                                     status="sent" # Initial status for outgoing
                                 )
                                 create_whatsapp_log(db, new_log)
