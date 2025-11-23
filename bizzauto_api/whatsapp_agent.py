@@ -1,5 +1,5 @@
 from openai import AsyncOpenAI, OpenAI
-from openai.agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, SQLiteSession
+from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, SQLiteSession
 import os
 from database import SessionLocal
 import crud
