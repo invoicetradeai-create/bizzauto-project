@@ -1,5 +1,6 @@
 import google.generativeai as genai
 import os
+import asyncio
 from database import SessionLocal
 import crud
 from uuid import UUID
@@ -13,11 +14,8 @@ def get_product_details(
     product_id: int | None = None
 ) -> dict:
     """
-    Use this function to retrieve details of a product from the database. 
-    You should call this function whenever a user asks about a product, including its price, availability, or stock count. 
-    Treat single-word messages as potential product names.
+    Use this function to get the details of a product, such as its price and availability.
     """
-    print(f"🔎 Getting product details for: {product_name or product_id}")
 
     db = SessionLocal()
     try:
@@ -26,14 +24,11 @@ def get_product_details(
         elif product_name:
             product = crud.get_product_by_name(db, name=product_name)
         else:
-            print("⚠️ Product name or ID not provided.")
             return {"error": "Provide product_name or product_id"}
 
         if not product:
-            print(f"❌ Product '{product_name}' not found in database.")
             return {"error": "Product not found"}
 
-        print(f"✅ Product '{product.name}' found.")
         return {
             "name": product.name,
             "sku": product.sku,
@@ -46,107 +41,66 @@ def get_product_details(
         }
 
     except Exception as e:
-        print(f"💥 Error fetching product: {str(e)}")
         return {"error": f"Error fetching product: {str(e)}"}
 
     finally:
         db.close()
 
-
 # ============================
-# 2. Configure Generative Model
+# Configure Generative Model
 # ============================
-# Configure the Gemini API key
 api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    raise ValueError("GEMINI_API_KEY environment variable not set.")
 genai.configure(api_key=api_key)
 
-# Define the system instructions
-system_instructions = (
-    """You are the friendly and helpful WhatsApp assistant for BizzAuto. Your goal is to assist customers with products while maintaining a warm, soft, and polite tone.
+# System instructions
+system_instructions = """
+You are the WhatsApp assistant for BizzAuto.
+1. ALWAYS use the `get_product_details` tool if a user mentions a car part (e.g., "Chocolate", "Brake pads").
+2. If the tool returns "Product not found", apologize politely.
+3. If the tool returns stock > 0, say "Yes, we have it! Price is [price]."
+4. Keep responses short and friendly.
+"""
 
-**CORE BEHAVIORS:**
-1.  **Tool Usage:** When a user asks about a product, including single-word queries, ALWAYS first call `get_product_details` to retrieve the data.
-1.5. **Query Interpretation:** Treat single-word messages or short phrases (e.g., "Chocolate", "Brake pads price") as implicit product queries and use the get_product_details tool.
-2.  **Tone:** Be conversational but concise. Use soft language (e.g., "Happy to help," "Apologies," "Great news") and occasional emojis (🚗, 🔧, ✅) to make the chat feel personal.
-3.  **Silence Policy:** ONLY respond if there is a clear question, request, or explicit intent from the user that you can address with your tools or information. If the user's message is purely conversational, a greeting, or lacks a clear query, DO NOT respond.
+tools_list = [get_product_details]
 
-**SCENARIO RULES:**
-
-1.  **General Availability:**
-    - If the product is found and stock > 0: "Yes, good news! We have that available. ✅"
-    - If stock is 0: "I'm so sorry, but that item is currently out of stock."
-
-2.  **Quantity Checks (e.g., "I need 5 pieces"):**
-    - Check `stock_quantity`.
-    - If request <= stock: "Yes, we can definitely supply that quantity for you! 👍"
-    - If request > stock: "Apologies, we currently only have [stock_quantity] units left in stock right now."
-
-3.  **Price Inquiries:**
-    - Respond with the `sale_price`.
-    - Example: "The price for that is [sale_price]. It's a great value! 🏷️"
-
-4.  **Stock Count Inquiries ("How many left?"):**
-    - Respond with `stock_quantity`.
-    - Example: "We currently have [stock_quantity] units ready to ship."
-
-5.  **Discount Requests:**
-    - Check the product data for a `discount_active` flag or compare `sale_price` vs `original_price`.
-    - **If a discount exists:** "You're in luck! 🎉 This item is already on a special offer at [sale_price]."
-    - **If NO discount exists:** "Our prices are already set to the best possible wholesale rate, so I can't offer a further discount on this specific item. I hope you understand! 🙏"""
-)
-
-# Create the GenerativeModel instance
+# Initialize Model
+# NOTE: If 'gemini-1.5-flash' still gives 404 after pip install, change to 'gemini-pro'
 model = genai.GenerativeModel(
-    model_name='gemini-2.5-flash',
+    model_name='gemini-2.5-flash', 
     system_instruction=system_instructions,
-    tools=[get_product_details]
+    tools=tools_list
 )
 
-# In-memory chat history
 chat_sessions = {}
 
 # ============================
-# 3. Runner Wrapper (Async)
+# Runner Wrapper (Async Fixed)
 # ============================
 async def run_whatsapp_agent(message: str, phone_number: str) -> str:
     """
-    Accepts a message and phone_number to maintain a chat history for each user.
-    Uses Gemini for function calling to respond to the user.
+    Async wrapper that handles the chat logic
     """
-    # Get or create a chat session for the user
-    if phone_number not in chat_sessions:
-        chat_sessions[phone_number] = model.start_chat()
-    
-    chat = chat_sessions[phone_number]
-
-    # Send the user message to the model
-    response = await chat.send_message_async(message)
-    
     try:
-        # Check if the model wants to call a function
-        function_call = response.candidates[0].content.parts[0].function_call
-        
-        if function_call.name == 'get_product_details':
-            # Extract arguments and call the actual function
-            args = {key: value for key, value in function_call.args.items()}
-            tool_result = get_product_details(**args)
-            print(f"🛠️ Tool result: {tool_result}")
-
-            # Send the function's result back to the model
-            response = await chat.send_message_async(
-                f"Tool get_product_details returned: {json.dumps(tool_result)}"
+        # 1. Create Chat Session if not exists
+        if phone_number not in chat_sessions:
+            chat_sessions[phone_number] = model.start_chat(
+                enable_automatic_function_calling=True
             )
-            print(f"🤖 Agent response after tool call: {response}")
+        
+        chat = chat_sessions[phone_number]
 
-        # The final response from the model after the tool call
+        # 2. Run the blocking Gemini call in a thread to prevent blocking FastAPI
+        # This fixes the "await" error while keeping the server responsive
+        response = await asyncio.to_thread(chat.send_message, message)
+        
         return response.text
 
-    except (ValueError, AttributeError, IndexError):
-        try:
-            return response.text
-        except ValueError:
-            return ""
-
-    return "Sorry, I encountered an issue. Please try again."
+    except Exception as e:
+        # Log the actual error for debugging
+        print(f"ERROR inside run_whatsapp_agent: {e}")
+        
+        # If the model name is wrong, catch it here
+        if "404" in str(e) and "models/" in str(e):
+            return "System Error: AI Model version mismatch. Please contact admin."
+            
+        return "Sorry, I'm having trouble connecting to the system right now. 🔧"
