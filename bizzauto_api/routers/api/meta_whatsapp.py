@@ -16,7 +16,7 @@ from ocr_tasks import process_invoice_image_gcp
 # Duplicate import removed
 # Removed 'normalize_text' because it no longer exists in utils
 from whatsapp_utils import send_reply
-from whatsapp_agent import run_whatsapp_agent
+
 
 router = APIRouter()
 
@@ -77,45 +77,45 @@ async def process_whatsapp_message(entry_data: dict):
                                 print("⚠️  Incoming text message is empty, skipping agent invocation.")
                                 continue
                                 
-                            # Run agent
-                            print(f"🤖 Running agent...")
-                            reply = await run_whatsapp_agent(incoming_text)
-                            print(f"✉️  Agent reply: {reply}")
+                            # # Run agent
+                            # print(f"🤖 Running agent...")
+                            # reply = await run_whatsapp_agent(incoming_text)
+                            # print(f"✉️  Agent reply: {reply}")
                             
-                            if not reply:
-                                print("❌ Agent returned empty response!")
-                                continue
+                            # if not reply:
+                            #     print("❌ Agent returned empty response!")
+                            #     continue
 
-                            # Send reply
-                            print(f"📤 Sending to: {sender_phone}")
-                            send_result = await send_reply(to=sender_phone, message=reply["response"])
-                            print(f"📬 Send result: {send_result}")
+                            # # Send reply
+                            # print(f"📤 Sending to: {sender_phone}")
+                            # send_result = await send_reply(to=sender_phone, message=reply["response"])
+                            # print(f"📬 Send result: {send_result}")
 
-                            whatsapp_message_id = None
-                            if send_result and "messages" in send_result and len(send_result["messages"]) > 0:
-                                whatsapp_message_id = send_result["messages"][0].get("id")
-                                print(f"🔗 Associated WhatsApp Message ID: {whatsapp_message_id}")
+                            # whatsapp_message_id = None
+                            # if send_result and "messages" in send_result and len(send_result["messages"]) > 0:
+                            #     whatsapp_message_id = send_result["messages"][0].get("id")
+                            #     print(f"🔗 Associated WhatsApp Message ID: {whatsapp_message_id}")
 
-                            # Create WhatsappLog entry for outgoing message
-                            # Assuming a default company_id for now, this should be determined contextually
-                            # For now, let's use a placeholder company_id. In a real app, this would come from user session or config.
-                            # Get a company_id - this is a placeholder
-                            companies = get_companies(db)
-                            company_id_for_log = companies[0].id if companies else None
+                            # # Create WhatsappLog entry for outgoing message
+                            # # Assuming a default company_id for now, this should be determined contextually
+                            # # For now, let's use a placeholder company_id. In a real app, this would come from user session or config.
+                            # # Get a company_id - this is a placeholder
+                            # companies = get_companies(db)
+                            # company_id_for_log = companies[0].id if companies else None
 
-                            if company_id_for_log:
-                                new_log = PydanticWhatsappLog(
-                                    company_id=company_id_for_log,
-                                    message_type="text", # Outgoing message
-                                    whatsapp_message_id=whatsapp_message_id,
-                                    phone=sender_phone,
-                                    message=reply["response"],
-                                    status="sent" # Initial status for outgoing
-                                )
-                                create_whatsapp_log(db, new_log)
-                                print(f"📝 Outgoing message logged with ID: {whatsapp_message_id}")
-                            else:
-                                print("⚠️  Could not find a company to associate the whatsapp log with.")
+                            # if company_id_for_log:
+                            #     new_log = PydanticWhatsappLog(
+                            #         company_id=company_id_for_log,
+                            #         message_type="text", # Outgoing message
+                            #         whatsapp_message_id=whatsapp_message_id,
+                            #         phone=sender_phone,
+                            #         message=reply["response"],
+                            #         status="sent" # Initial status for outgoing
+                            #     )
+                            #     create_whatsapp_log(db, new_log)
+                            #     print(f"📝 Outgoing message logged with ID: {whatsapp_message_id}")
+                            # else:
+                            #     print("⚠️  Could not find a company to associate the whatsapp log with.")
                         
                         else:
                             print(f"⚠️  Unsupported message type: {message_type}")

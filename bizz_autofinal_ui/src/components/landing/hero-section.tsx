@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import dashboardImg from "@/assets/dashboard-hero.png";
-import pdfIllustration from "@/assets/pdf-illustration.png"; // Replace with your PDF illustration
+import pdfIllustration from "@/assets/pdf-illustration.jpg"; // Replace with your PDF illustration
 import whatsappIllustration from "@/assets/whatsapp-illustration.png";
 
 export function HeroSection() {

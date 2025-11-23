@@ -6,7 +6,7 @@ export const API_ENDPOINTS = {
   invoices: '/api/invoices',
   expenses: '/api/expenses',
   whatsappLogs: '/api/whatsapp_logs',
-  scheduledWhatsappMessages: '/api/scheduled_messages',
+  scheduledWhatsappMessages: '/api/scheduled-whatsapp-messages',
   sendMetaWhatsapp: '/api/send-meta-whatsapp',
   health: '/health',
   accounting: {

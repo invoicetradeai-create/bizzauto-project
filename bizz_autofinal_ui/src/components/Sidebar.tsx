@@ -78,7 +78,7 @@ export const NavigationContent = ({ setOpen }: { setOpen?: (open: boolean) => vo
   }, []);
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       <div className="p-4 flex items-center gap-3 border-b bg-gradient-to-r from-blue-500/90 to-blue-600/90 dark:from-blue-700/80 dark:to-blue-800/80 text-white shadow-md">
         <div className="h-10 w-10 rounded-full flex items-center justify-center bg-white/20 hover:bg-white/30 transition">
           <Sparkles className="h-5 w-5 text-white" />
@@ -86,7 +86,7 @@ export const NavigationContent = ({ setOpen }: { setOpen?: (open: boolean) => vo
         <span className="text-xl font-semibold tracking-wide">BizzAuto</span>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2 bg-gradient-to-b from-blue-50 to-white dark:from-[#0f172a] dark:to-[#1e293b] transition-colors">
+      <nav className="flex-grow p-4 space-y-2 bg-gradient-to-b from-blue-50 to-white dark:from-[#0f172a] dark:to-[#1e293b] transition-colors overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.path;
@@ -120,7 +120,7 @@ export const NavigationContent = ({ setOpen }: { setOpen?: (open: boolean) => vo
           <LogOut className="h-4 w-4 sm:h-5 sm:w-5" /> Sign Out
         </Button>
       </div>
-    </>
+    </div>
   );
 };
 
