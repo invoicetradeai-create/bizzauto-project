@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 10000
 
 # Run the Uvicorn server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "main:app"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
