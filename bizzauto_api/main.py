@@ -1,3 +1,9 @@
+import openai
+import pkgutil
+
+print("OpenAI version:", openai.__version__)
+print("Has agents?", pkgutil.find_loader("openai.agents"))
+
 from dotenv import load_dotenv
 import sys
 import os
