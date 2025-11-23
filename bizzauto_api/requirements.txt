@@ -13,3 +13,4 @@ rq==1.16.2
 openai-agents==0.0.10
 openai>=1.44.0
 aiosqlite
+google-generativeai
