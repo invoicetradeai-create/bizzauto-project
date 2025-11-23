@@ -10,5 +10,5 @@ pytest
 pytest-cov
 psycopg2-binary
 rq==1.16.2
-openai>=1.38
+openai==1.43.0
 openai-agents
