@@ -5,7 +5,8 @@ from uuid import UUID
 from dotenv import load_dotenv, find_dotenv
 
 from openai import AsyncOpenAI
-from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, SQLiteSession
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
 
 from database import SessionLocal
 import crud
@@ -26,7 +27,7 @@ external_client = AsyncOpenAI(
 )
 
 # LLM Model Wrapper
-llm_model = OpenAIChatCompletionsModel(
+llm_model = OpenAIChatModel(
     model="gemini-2.5-flash",
     openai_client=external_client
 )
@@ -35,7 +36,7 @@ llm_model = OpenAIChatCompletionsModel(
 # ============================
 # 2. Product Lookup Tool
 # ============================
-@function_tool
+@agent.tool
 def get_product_details(
     product_name: str | None = None,
     product_id: int | None = None
@@ -123,14 +124,7 @@ async def run_whatsapp_agent(message: str, phone_number: str) -> str:
     """
     Now accepts phone_number to maintain unique chat history for each user.
     """
-    # Create a persistent session object for the user (phone number)
-    session = SQLiteSession(session_id=phone_number, db_path="whatsapp_sessions.db")
-    
-    result = await Runner.run(
-        agent, 
-        message, 
-        session=session
-    ) 
-    return result.final_output
+    result = await agent.run(message) 
+    return result.data
 
 
