@@ -2,10 +2,10 @@ import openai
 print("OpenAI version:", openai.__version__)
 
 import pkgutil
-print("Agents loaded?", pkgutil.find_loader("openai.agents"))
+print("Agents loaded?", pkgutil.find_loader("openai_agents"))
 
 from openai import AsyncOpenAI, OpenAI
-from openai.agents import Agent, Runner, function_tool, SQLiteSession
+from openai_agents import Agent, Runner, function_tool, SQLiteSession
 import os
 from database import SessionLocal
 import crud
