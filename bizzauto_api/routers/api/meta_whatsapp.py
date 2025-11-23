@@ -79,7 +79,7 @@ async def process_whatsapp_message(entry_data: dict):
                                 
                             # Run agent
                             print(f"🤖 Running agent...")
-                            reply = await run_whatsapp_agent(incoming_text, sender_phone)
+                            reply = await run_whatsapp_agent(incoming_text)
                             print(f"✉️  Agent reply: {reply}")
                             
                             if not reply:

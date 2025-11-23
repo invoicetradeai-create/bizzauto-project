@@ -3,7 +3,7 @@ import os
 
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-async def run_whatsapp_agent(message: str, phone_number: str) -> dict:
+async def run_whatsapp_agent(message: str) -> dict:
     """WhatsApp agent using direct OpenAI API"""
     try:
         response = await client.chat.completions.create(
