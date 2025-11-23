@@ -1,13 +1,18 @@
 # Dockerfile for the FastAPI backend
 
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim-buster
+FROM python:3.11-slim-bookworm
 
 # Set the working directory in the container
 WORKDIR /app
 
 # Install system dependencies for google-cloud-vision
-RUN apt-get update && apt-get install -y libglib2.0-0 libsm6 libxext6 libxrender-dev
+RUN apt-get update && apt-get install -y \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file and install dependencies
 COPY requirements.txt ./requirements.txt
@@ -20,4 +25,4 @@ COPY . .
 EXPOSE 8000
 
 # Run the Uvicorn server
-CMD ["python", "main.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "main:app"]
