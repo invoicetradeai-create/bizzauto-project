@@ -10,4 +10,6 @@ pytest
 pytest-cov
 psycopg2-binary
 rq==1.16.2
-google-generativeai
+openai-agents==0.0.10
+openai==1.69.0
+aiosqlite
