@@ -9,3 +9,4 @@ google-cloud-storage
 pytest
 pytest-cov
 psycopg2-binary
+rq==1.16.2
