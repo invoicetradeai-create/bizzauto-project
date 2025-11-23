@@ -1,22 +1,10 @@
 from openai import AsyncOpenAI, OpenAI
-from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, SQLiteSession
+from openai.agents import Agent, Runner, function_tool, SQLiteSession
 import os
 from database import SessionLocal
 import crud
 
-gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
 
-# 1. Which LLM Service?
-external_client: AsyncOpenAI = AsyncOpenAI(
-    api_key=gemini_api_key,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-)
-
-# 2. Which LLM Model?
-llm_model: OpenAIChatCompletionsModel = OpenAIChatCompletionsModel(
-    model="gemini-2.5-flash",
-    openai_client=external_client
-)
 
 # ============================
 # 2. Product Lookup Tool
@@ -65,7 +53,7 @@ def get_product_details(
 # ============================
 agent = Agent(
     name="whatsapp_product_agent",
-    model=llm_model,
+    model="gemini-2.5-flash",
     tools=[get_product_details],
     instructions=(
         """You are the friendly and helpful WhatsApp assistant for BizzAuto. Your goal is to assist customers with auto parts while maintaining a warm, soft, and polite tone.
