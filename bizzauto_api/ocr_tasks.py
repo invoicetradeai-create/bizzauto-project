@@ -100,6 +100,52 @@ def _parse_price_from_text(s):
         return None
 
 
+def extract_client_from_text(text_lines, db):
+    """
+    Tries to find a valid client in the database from the OCR text lines.
+    """
+    
+    # Heuristics for client_name lines often directly below "BILL TO"
+    try:
+        bill_to_index = [i for i, line in enumerate(text_lines) if "bill to" in line.lower()][0]
+        # Search lines after "BILL TO:"
+        for i in range(bill_to_index + 1, min(bill_to_index + 4, len(text_lines))): # Check up to 3 lines
+            candidate_name = text_lines[i].strip()
+            if not candidate_name or "FROM:" in candidate_name.upper(): # Skip empty or "FROM:" line
+                continue
+            
+            # Remove "Name: " prefix if present
+            if candidate_name.lower().startswith("name:"):
+                candidate_name = candidate_name[len("name:"):].strip()
+
+            print(f"🔍 Checking if '{candidate_name}' is a valid client from BILL TO section...")
+            client = get_client_by_name(db, candidate_name)
+            if client:
+                print(f"✅ Found client: {client.name}")
+                return client.id
+    except IndexError:
+        pass # "BILL TO" not found, proceed to other heuristics
+
+    # If not found directly below "BILL TO", try a more general search for lines that look like a client name
+    # starting from the beginning of the text
+    for line in text_lines:
+        candidate_name = line.strip()
+        # Skip common invoice parts or very short strings
+        if not candidate_name or len(candidate_name) < 3 or any(keyword in candidate_name.upper() for keyword in ["INVOICE", "DETAILS", "ID:", "DATE:", "STATUS:", "ITEM", "QTY", "TOTAL"]):
+            continue
+        
+        # Remove "Name: " prefix if present
+        if candidate_name.lower().startswith("name:"):
+            candidate_name = candidate_name[len("name:"):].strip()
+
+        print(f"🔍 Checking if '{candidate_name}' is a valid client from general text...")
+        client = get_client_by_name(db, candidate_name)
+        if client:
+            print(f"✅ Found client: {client.name}")
+            return client.id
+            
+    return None
+
 def parse_invoice_text(text, db, company_id):
     """
     Parse OCR text to extract client, items and total_amount.
@@ -110,37 +156,11 @@ def parse_invoice_text(text, db, company_id):
         print("No text to parse.")
         return None
 
-    # 1) Find client
-    client_name = None
-    try:
-        bill_to_index = [i for i, line in enumerate(lines) if "bill to" in line.lower()][0]
-        # The client name is likely on the same line or the next non-empty line
-        # and is not the "FROM:" line which might be nearby
-        potential_client_lines = lines[bill_to_index+1:bill_to_index+3]
-        for line in potential_client_lines:
-            if "from:" not in line.lower() and line.strip():
-                client_name = line.strip()
-                break
-    except IndexError:
-        # Fallback if "BILL TO" is not found
-        pass
-        
-    if not client_name:
-        # Try heuristics: look for common labels
-        for i, line in enumerate(lines):
-            if line.lower().startswith("client") or line.lower().startswith("customer"):
-                parts = line.split(":", 1)
-                if len(parts) > 1 and parts[1].strip():
-                    client_name = parts[1].strip()
-                    break
-
-    if not client_name:
-        print("Client name not found.")
-        return None
-
-    client = get_client_by_name(db, name=client_name)
-    if not client:
-        print(f"Client '{client_name}' not found in database.")
+    # 1) Find client using the new helper function
+    client_id = extract_client_from_text(lines, db)
+    
+    if not client_id:
+        print("Client name not found or client not in database after advanced search.")
         return None
 
     # 2) Find items block bounds
