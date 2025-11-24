@@ -1,10 +1,8 @@
 import redis
+import os
 from rq import Queue
 
-# Default Redis connection
-# Make sure your Redis server is running on this host and port.
-# You can change these values if your Redis server is configured differently.
-redis_conn = redis.Redis(host='localhost', port=6379, db=0)
+redis_conn = redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
 
 # Create a default queue
 # You can create multiple queues for different types of jobs
