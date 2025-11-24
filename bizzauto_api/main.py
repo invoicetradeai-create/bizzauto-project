@@ -38,7 +38,6 @@ import routers.api.accounting as accounting
 from database import engine, get_db, TestingSessionLocal, test_engine
 import sql_models
 import logging
-from redis import Redis
 import google.generativeai as genai
 from pydantic import BaseModel
 
@@ -95,28 +94,6 @@ async def startup_event():
         logging.info("Google Cloud Vision API credentials configured from environment variable.")
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         logging.error(f"Error configuring Google Cloud Vision API credentials: {e}")
-
-    # Redis Connection with Retry
-    REDIS_URL = os.getenv("REDIS_URL")
-    if REDIS_URL:
-        max_retries = 5
-        retry_delay = 3  # seconds
-        for attempt in range(max_retries):
-            try:
-                app.state.redis = Redis.from_url(REDIS_URL, socket_connect_timeout=2)
-                # Check if the connection is actually working
-                app.state.redis.ping()
-                logging.info("Redis client initialized and connected successfully.")
-                break  # Exit the loop if connection is successful
-            except Exception as e:
-                logging.warning(f"Redis connection attempt {attempt + 1} of {max_retries} failed: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                else:
-                    logging.error("Could not connect to Redis after multiple retries. The application might not function correctly.")
-                    app.state.redis = None  # Ensure app.state.redis is None if connection fails
-    else:
-        logging.warning("REDIS_URL not set. Redis client not initialized.")
 
     # Gemini API Key Configuration
     # Make sure to set the GEMINI_API_KEY environment variable in your .env file
