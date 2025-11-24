@@ -106,7 +106,7 @@ class Invoice(Base):
 
     client = relationship("Client", back_populates="invoices")
 
-    items = relationship("InvoiceItem", back_populates="invoice")
+    items = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
 
     journal_entries = relationship("JournalEntry", back_populates="invoice")
 class InvoiceItem(Base):

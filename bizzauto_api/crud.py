@@ -214,11 +214,20 @@ def update_invoice(db: Session, invoice_id: UUID, invoice: PydanticInvoice):
     return db_invoice
 
 def delete_invoice(db: Session, invoice_id: UUID):
+    print(f"Attempting to delete invoice with ID: {invoice_id}")
     db_invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if db_invoice:
-        db.delete(db_invoice)
-        db.commit()
-    return db_invoice
+        try:
+            db.delete(db_invoice)
+            db.commit()
+            print(f"Invoice {invoice_id} and associated items deleted successfully.")
+            return db_invoice
+        except Exception as e:
+            db.rollback()
+            print(f"Error deleting invoice {invoice_id}: {e}")
+            raise # Re-raise to let the router handle the HTTP exception
+    print(f"Invoice with ID: {invoice_id} not found for deletion.")
+    return None
 
 def get_invoice_item(db: Session, invoice_item_id: UUID):
     return db.query(InvoiceItem).filter(InvoiceItem.id == invoice_item_id).first()
