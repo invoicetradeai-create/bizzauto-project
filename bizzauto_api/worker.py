@@ -70,11 +70,17 @@ def run_ocr_redis_listener():
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    print("🚀 Starting Unified Worker Service...")
+    try:
+        print("🚀 Starting Unified Worker Service...")
 
-    # 1. Create a Thread for the Scheduler
-    scheduler_thread = threading.Thread(target=run_scheduler_loop, daemon=True)
-    scheduler_thread.start()
+        # 1. Create a Thread for the Scheduler
+        scheduler_thread = threading.Thread(target=run_scheduler_loop, daemon=True)
+        scheduler_thread.start()
 
-    # 2. Run the OCR listener in the Main Thread
-    run_ocr_redis_listener()
+        # 2. Run the OCR listener in the Main Thread
+        run_ocr_redis_listener()
+    except Exception as e:
+        import traceback
+        print("💥 CRITICAL ERROR during Unified Worker startup or main loop:")
+        print(f"Error: {e}")
+        traceback.print_exc()
