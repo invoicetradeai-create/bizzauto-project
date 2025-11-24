@@ -191,6 +191,11 @@ def parse_invoice_text(text, db, company_id):
         while i < len(item_section_lines):
             line = item_section_lines[i].strip()
             
+            # Skip common headers
+            if line.upper() in ["DESCRIPTION", "QTY", "PRICE", "AMOUNT"]:
+                i += 1
+                continue
+            
             # Heuristic: If a line starts with a number, it's likely a quantity.
             # But if it's a long string with text, it's a description.
             # A good description line is mostly text.
@@ -250,39 +255,29 @@ def parse_invoice_text(text, db, company_id):
         print(f"Could not parse item section: {e}")
         pass # Allow parsing to continue for total amount
 
-    # 3) Extract total amount (look from bottom up for 'total' not 'subtotal')
+    # 3) Extract total amount
     total_amount = 0.0
-    for i in range(len(lines) - 1, -1, -1):
-        line = lines[i]
-        if "subtotal" in line.lower() or "subotal" in line.lower():
-            continue
-        if "total" in line.lower():
-            # Check on the same line
-            pm = re.search(r'[\$]?([\d,]+\.\d+|[\d,]+)', line)
-            if pm:
+    for line in reversed(lines): # Search from bottom up
+        if "total" in line.lower() and "sub" not in line.lower():
+            price_match = re.search(r'[\$]?\s*([\d,]+\.\d{2})', line)
+            if price_match:
                 try:
-                    total_amount = float(pm.group(1).replace(',', ''))
-                    break
-                except Exception:
-                    pass
-            # Check on the next line
-            if i + 1 < len(lines):
-                next_line = lines[i+1]
-                pm = re.search(r'[\$]?([\d,]+\.\d+|[\d,]+)', next_line)
-                if pm:
-                    try:
-                        total_amount = float(pm.group(1).replace(',', ''))
-                        break
-                    except Exception:
-                        pass
-
+                    total_amount = float(price_match.group(1).replace(',', ''))
+                    break # Stop after finding the first valid total from the bottom
+                except (ValueError, IndexError):
+                    continue
+    
     if not items:
         print("No invoice items could be parsed from the text.")
         return None
 
+    # If total amount wasn't found, calculate it from items
+    if total_amount == 0.0:
+        total_amount = sum(item.get('total', 0) for item in items)
+
     print(f"Successfully parsed {len(items)} items with total ${total_amount}")
     return {
-        "client_id": client.id,
+        "client_id": client_id, # Use the client_id found earlier
         "items": items,
         "total_amount": total_amount
     }
