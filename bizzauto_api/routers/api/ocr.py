@@ -5,7 +5,7 @@ import tempfile
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from ocr_tasks import process_invoice_image_gcp
 from uuid import UUID, uuid4
-from ...redis import get_redis_client # Adjust import path
+from ...redis_client import get_redis_client # Adjust import path
 
 # This is a placeholder for your actual authentication dependency
 # You would replace this with your actual dependency to get the current user
