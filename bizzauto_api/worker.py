@@ -115,11 +115,10 @@ def send_daily_stock_summary():
             expiring_items = [f"- {p.name} - Expires: {p.expiration_date.strftime('%Y-%m-%d')}" for p in alert_products if p.expiration_date and p.expiration_date.date() <= (datetime.utcnow().date() + timedelta(days=30))]
 
             if low_stock_items:
-                message_body += "*Low Stock Items:*
-" + "\n".join(low_stock_items) + "\n\n"
+                message_body += """*Low Stock Items:*\n""" + "\n".join(low_stock_items) + "\n\n"
+            
             if expiring_items:
-                message_body += "*Expiring Items (within 30 days):*
-" + "\n".join(expiring_items) + "\n\n"
+                message_body += """*Expiring Items (within 30 days):*\n""" + "\n".join(expiring_items) + "\n\n"
 
             if low_stock_items or expiring_items:
                 send_whatsapp_message(to=admin_phone_number, body=message_body)
