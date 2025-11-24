@@ -112,12 +112,19 @@ def parse_invoice_text(text, db, company_id):
 
     # 1) Find client
     client_name = None
-    for i, line in enumerate(lines):
-        if "bill to" in line.lower():
-            # next non-empty line is client
-            if i + 1 < len(lines):
-                client_name = lines[i + 1].strip()
-            break
+    try:
+        bill_to_index = [i for i, line in enumerate(lines) if "bill to" in line.lower()][0]
+        # The client name is likely on the same line or the next non-empty line
+        # and is not the "FROM:" line which might be nearby
+        potential_client_lines = lines[bill_to_index+1:bill_to_index+3]
+        for line in potential_client_lines:
+            if "from:" not in line.lower() and line.strip():
+                client_name = line.strip()
+                break
+    except IndexError:
+        # Fallback if "BILL TO" is not found
+        pass
+        
     if not client_name:
         # Try heuristics: look for common labels
         for i, line in enumerate(lines):
