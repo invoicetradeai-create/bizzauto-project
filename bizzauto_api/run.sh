@@ -1,4 +1,14 @@
 #!/bin/bash
-# Start the worker in the background (&)
+
+# This line ensures that all output from this script is sent to the logs.
+exec > >(tee /dev/stdout) 2> >(tee /dev/stderr >&2)
+
+echo "--- [DEBUG] run.sh script has started ---"
+
+echo "--- [DEBUG] Starting worker.py in the background... ---"
 python worker.py &
-uvicorn main:app --host 0.0.0.0 --port $PORT
+
+echo "--- [DEBUG] Starting Uvicorn in the foreground... ---"
+uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}
+
+echo "--- [DEBUG] This line should not be reached if Uvicorn starts correctly. ---"
