@@ -25,10 +25,17 @@ def read_invoice(invoice_id: UUID, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=PydanticInvoice)
 def create_invoice_route(invoice: PydanticInvoice, db: Session = Depends(get_db)):
+    # TEMPORARY FIX: Inject a default company_id if not provided by the frontend
+    # This should be handled by getting the user's company from their session/token
+    if not hasattr(invoice, 'company_id') or not invoice.company_id:
+        invoice.company_id = UUID("94bb2f7b-5ce9-4f9b-b097-5ef45e75c2fa") # Hardcoded default
     return create_invoice(db=db, invoice=invoice)
 
 @router.put("/{invoice_id}", response_model=PydanticInvoice)
 def update_invoice_route(invoice_id: UUID, invoice: PydanticInvoice, db: Session = Depends(get_db)):
+    # TEMPORARY FIX: Inject a default company_id if not provided
+    if not hasattr(invoice, 'company_id') or not invoice.company_id:
+        invoice.company_id = UUID("94bb2f7b-5ce9-4f9b-b097-5ef45e75c2fa") # Hardcoded default
     db_invoice = update_invoice(db=db, invoice_id=invoice_id, invoice=invoice)
     if db_invoice is None:
         raise HTTPException(status_code=404, detail="Invoice not found")
