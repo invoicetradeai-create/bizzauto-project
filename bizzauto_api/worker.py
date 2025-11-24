@@ -175,6 +175,24 @@ def run_ocr_redis_listener():
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
+    # --- Google Cloud Credentials Setup (Mirrors main.py) ---
+    try:
+        creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        if not creds_json:
+            raise ValueError("Env var GOOGLE_APPLICATION_CREDENTIALS_JSON is not set for worker")
+
+        creds_dict = json.loads(creds_json)
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
+        with open("/tmp/sa_worker.json", "w") as f:
+            json.dump(creds_dict, f)
+
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/sa_worker.json"
+        print("✅ Google Cloud Vision API credentials configured for worker.", flush=True)
+    except Exception as e:
+        print(f"❌ Error configuring Google Cloud Vision API credentials for worker: {e}", flush=True)
+    # --- End of Credentials Setup ---
+
     print("🚀 Starting Unified Worker Service...", flush=True)
     scheduler_thread = threading.Thread(target=run_scheduler_loop, daemon=True)
     scheduler_thread.start()
