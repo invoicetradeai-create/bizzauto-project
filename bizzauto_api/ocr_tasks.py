@@ -1,5 +1,5 @@
 import os
-import json # Added for parsing JSON from environment variable
+import json
 from google.cloud import vision
 import io
 import re
@@ -7,12 +7,7 @@ from uuid import UUID
 from crud import get_client_by_name, get_product_by_name, create_invoice, create_invoice_item
 from models import Invoice, InvoiceItem
 from database import SessionLocal
-
-def get_vision_client():
-    """Loads Google Cloud Vision API credentials from environment variable."""
-    creds_dict = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
-    credentials = service_account.Credentials.from_service_account_info(creds_dict)
-    return vision.ImageAnnotatorClient(credentials=credentials)
+from google.oauth2 import service_account
 
 def process_invoice_image_gcp(gcs_uri, company_id: UUID):
     """
@@ -22,7 +17,9 @@ def process_invoice_image_gcp(gcs_uri, company_id: UUID):
     print(f"Processing image from GCS: {gcs_uri}")
 
     try:
-        client = get_vision_client()
+        creds_dict = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
+        credentials = service_account.Credentials.from_service_account_info(creds_dict)
+        client = vision.ImageAnnotatorClient(credentials=credentials)
 
         image = vision.Image()
         image.source.image_uri = gcs_uri # Use GCS URI
