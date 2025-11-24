@@ -1,37 +1,44 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+type Theme = "light" | "dark";
 
 export function useTheme() {
-  const getInitial = (): "light" | "dark" => {
-    if (typeof window === "undefined") return "light";
-    const stored = localStorage.getItem("theme") as "light" | "dark" | null;
-    if (stored) {
-      // ensure document class is in sync
-      document.documentElement.classList.toggle("dark", stored === "dark");
-      return stored;
-    }
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.classList.toggle("dark", prefersDark);
-    return prefersDark ? "dark" : "light";
-  };
-
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
+  
+  // Safely get the initial theme on the client side only
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("theme") as Theme | null;
+      if (stored) return stored;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+    // Default theme for server-side rendering
+    return "light";
+  });
 
+  // Effect to apply the theme class to the document and save to localStorage
+  useEffect(() => {
+    if (mounted) {
+      document.documentElement.classList.remove("light", "dark");
+      document.documentElement.classList.add(theme);
+      localStorage.setItem("theme", theme);
+    }
+  }, [theme, mounted]);
+
+  // Effect to set mounted to true only on the client, after initial render
   useEffect(() => {
     setMounted(true);
-    setTheme(getInitial());
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     if (!mounted) return;
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    localStorage.setItem("theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-  };
+    setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
+  }, [mounted]);
 
   return { theme, toggleTheme, mounted };
 }
