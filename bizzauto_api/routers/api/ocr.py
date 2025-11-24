@@ -1,10 +1,11 @@
 import os
+import json
 from google.cloud import storage
 import tempfile
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from redis_config import queue
 from ocr_tasks import process_invoice_image_gcp
 from uuid import UUID, uuid4
+from ...redis import get_redis_client # Adjust import path
 
 # This is a placeholder for your actual authentication dependency
 # You would replace this with your actual dependency to get the current user
@@ -18,7 +19,7 @@ async def get_current_user():
 router = APIRouter()
 
 @router.post("/upload")
-async def upload_invoice_for_ocr(file: UploadFile = File(...), current_user = Depends(get_current_user)):
+async def upload_invoice_for_ocr(file: UploadFile = File(...), current_user = Depends(get_current_user), r = Depends(get_redis_client)):
     """
     Accepts an image file upload, uploads it to GCS, and enqueues it for OCR processing.
     """
@@ -42,8 +43,12 @@ async def upload_invoice_for_ocr(file: UploadFile = File(...), current_user = De
         gcs_uri = f"gs://{gcs_bucket_name}/{file_name}"
         print(f"File '{file.filename}' uploaded to: {gcs_uri}")
 
-        # Enqueue the OCR processing task with the GCS URI
-        queue.enqueue(process_invoice_image_gcp, gcs_uri, current_user.company_id)
+        # Enqueue the OCR processing task with the GCS URI to Redis list
+        payload = {
+            "gcs_uri": gcs_uri,
+            "company_id": str(current_user.company_id)
+        }
+        r.rpush("ocr_queue", json.dumps(payload))
         print(f"Enqueued OCR task for image: {gcs_uri}")
 
         return {

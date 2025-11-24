@@ -12,3 +12,5 @@
 - pytest for unit testing.
 - Dockerized production deployment with managed Postgres, Redis and S3.
 - Add Github Actions CI for init + test.
+
+- redis-10338.c253.us-central1-1.gce.cloud.redislabs.com:10338
