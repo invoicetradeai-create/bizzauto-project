@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import sys
 import os
 import json # Added for JSON parsing
+import time # Added for retry delay
 from google.oauth2 import service_account # Added for service account credentials
 from google.cloud import vision # Added for Vision API client initialization
 
@@ -95,10 +96,25 @@ async def startup_event():
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         logging.error(f"Error configuring Google Cloud Vision API credentials: {e}")
 
+    # Redis Connection with Retry
     REDIS_URL = os.getenv("REDIS_URL")
     if REDIS_URL:
-        app.state.redis = Redis.from_url(REDIS_URL) # Initialize Redis client
-        logging.info("Redis client initialized.")
+        max_retries = 5
+        retry_delay = 3  # seconds
+        for attempt in range(max_retries):
+            try:
+                app.state.redis = Redis.from_url(REDIS_URL, socket_connect_timeout=2)
+                # Check if the connection is actually working
+                app.state.redis.ping()
+                logging.info("Redis client initialized and connected successfully.")
+                break  # Exit the loop if connection is successful
+            except Exception as e:
+                logging.warning(f"Redis connection attempt {attempt + 1} of {max_retries} failed: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                else:
+                    logging.error("Could not connect to Redis after multiple retries. The application might not function correctly.")
+                    app.state.redis = None  # Ensure app.state.redis is None if connection fails
     else:
         logging.warning("REDIS_URL not set. Redis client not initialized.")
 
