@@ -2,7 +2,7 @@
 import os
 import json
 import time
-from redis_client import get_redis_client
+from redis_client import redis_client
 from ocr_tasks import process_invoice_image_gcp
 from uuid import UUID
 
@@ -12,9 +12,8 @@ def worker_process_ocr_jobs():
     """
     print("OCR Worker started, waiting for jobs...")
     
-    # Initialize Redis client for the worker
-    # Using 'next' to get the client from the generator
-    redis_client_worker = next(get_redis_client())
+    # Use the imported redis_client instance directly
+    redis_client_worker = redis_client
 
     while True:
         try:
