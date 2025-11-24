@@ -9,7 +9,16 @@ from uuid import UUID
 from datetime import datetime, timedelta
 
 # Import scheduler logic from the existing scheduler_worker.py
-from scheduler_worker import send_daily_stock_summary, process_pending_messages 
+try:
+    from scheduler_worker import send_daily_stock_summary, process_pending_messages
+except Exception as e:
+    import traceback
+    print("💥 CRITICAL ERROR during import of scheduler_worker.py:")
+    print(f"Error: {e}")
+    traceback.print_exc()
+    # Exit immediately if essential worker component can't be imported
+    import sys
+    sys.exit(1) 
 
 # --- JOB 1: THE SCHEDULER (Runs every 60 seconds) ---
 def run_scheduler_loop():
