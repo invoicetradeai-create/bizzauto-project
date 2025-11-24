@@ -11,7 +11,7 @@ redis_client = redis.Redis(
     port=int(os.getenv("REDIS_PORT")), # Cast port to int
     password=os.getenv("REDIS_PASSWORD"),
     decode_responses=True, # Essential for Python to get strings instead of bytes
-    ssl=True # Often required for Redis Cloud
+    ssl=False # <--- CHANGE THIS FROM True TO False
 )
 
 def get_redis_client():
