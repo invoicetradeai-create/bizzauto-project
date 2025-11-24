@@ -9,7 +9,7 @@ google-cloud-storage
 pytest
 pytest-cov
 psycopg2-binary
-
+rq
 aiosqlite
 google-generativeai
 python-multipart
