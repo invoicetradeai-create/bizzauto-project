@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, get_db
 from crud import create_whatsapp_log, get_companies, get_whatsapp_logs, update_whatsapp_log, get_whatsapp_log_by_whatsapp_message_id
 from models import WhatsappLog as PydanticWhatsappLog
-from redis_config import queue
 from ocr_tasks import process_invoice_image_gcp
 from whatsapp_utils import send_reply
 from whatsapp_agent import run_whatsapp_agent
