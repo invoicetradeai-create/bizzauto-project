@@ -205,13 +205,58 @@ def create_invoice(db: Session, invoice: PydanticInvoice):
     return db_invoice
 
 def update_invoice(db: Session, invoice_id: UUID, invoice: PydanticInvoice):
+    print(f"Attempting to update invoice with ID: {invoice_id}")
+    print(f"Received update data: {invoice.model_dump()}")
+
     db_invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
-    if db_invoice:
-        for key, value in invoice.model_dump(exclude_unset=True).items():
+    
+    if not db_invoice:
+        print(f"Invoice with ID: {invoice_id} not found for update.")
+        return None
+
+    try:
+        # Update top-level invoice fields
+        update_data = invoice.model_dump(exclude_unset=True)
+        
+        # Pop the 'items' from the update data as we will handle them separately
+        new_items_data = update_data.pop('items', None)
+
+        for key, value in update_data.items():
             setattr(db_invoice, key, value)
+        
+        # --- Handle Invoice Items ---
+        if new_items_data is not None:
+            # 1. Delete old items
+            # Since we have cascade delete on the Invoice->items relationship,
+            # we can just delete them from the session.
+            for item in db_invoice.items:
+                db.delete(item)
+            db.flush() # Flush to apply the deletions before adding new items
+            print(f"Deleted old items for invoice {invoice_id}")
+
+            # 2. Add new items
+            if new_items_data:
+                for item_data in new_items_data:
+                    # Ensure product_id is present before creating an item
+                    if 'product_id' in item_data and item_data['product_id']:
+                        new_item = InvoiceItem(
+                            invoice_id=db_invoice.id,
+                            **item_data
+                        )
+                        db.add(new_item)
+                        print(f"Adding new item for product ID: {item_data.get('product_id')}")
+                    else:
+                        print(f"Skipping item without product_id: {item_data}")
+        
         db.commit()
         db.refresh(db_invoice)
-    return db_invoice
+        print(f"Invoice {invoice_id} updated successfully.")
+        return db_invoice
+
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating invoice {invoice_id}: {e}")
+        raise
 
 def delete_invoice(db: Session, invoice_id: UUID):
     print(f"Attempting to delete invoice with ID: {invoice_id}")
