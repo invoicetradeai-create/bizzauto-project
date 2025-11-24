@@ -58,26 +58,42 @@ class Product(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class Invoice(BaseModel):
-    id: Optional[UUID] = None
-    company_id: UUID
-    client_id: Optional[UUID] = None
-    invoice_date: date = date.today()
-    total_amount: float = 0
-    payment_status: Optional[str] = 'unpaid'
-    notes: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
 class InvoiceItem(BaseModel):
     id: Optional[UUID] = None
-    invoice_id: UUID
+    invoice_id: Optional[UUID] = None # Optional for creation
     product_id: UUID
     quantity: int = 1
     price: float = 0
     total: float = 0
 
     model_config = ConfigDict(from_attributes=True)
+
+class InvoiceItemCreate(BaseModel):
+    product_id: UUID
+    quantity: int = 1
+    price: float = 0
+    total: float = 0
+
+class Invoice(BaseModel):
+    id: Optional[UUID] = None
+    company_id: Optional[UUID] = None # Optional for creation
+    client_id: Optional[UUID] = None
+    invoice_date: date = date.today()
+    total_amount: float = 0
+    payment_status: Optional[str] = 'unpaid'
+    notes: Optional[str] = None
+    items: List[InvoiceItem] = [] # For response
+
+    model_config = ConfigDict(from_attributes=True)
+
+class InvoiceCreate(BaseModel):
+    client_id: UUID
+    invoice_date: date
+    total_amount: float
+    payment_status: Optional[str] = 'unpaid'
+    notes: Optional[str] = None
+    items: List[InvoiceItemCreate] = []
+
 
 class Purchase(BaseModel):
     id: Optional[UUID] = None

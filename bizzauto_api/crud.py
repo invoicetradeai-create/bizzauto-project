@@ -197,16 +197,29 @@ def get_invoice(db: Session, invoice_id: UUID):
 def get_invoices(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Invoice).offset(skip).limit(limit).all()
 
-def create_invoice(db: Session, invoice: PydanticInvoice):
-    db_invoice = Invoice(**invoice.model_dump(exclude_none=True))
+def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID):
+    # Extract items and create the main invoice object
+    invoice_data = invoice.model_dump(exclude={'items'})
+    db_invoice = Invoice(**invoice_data, company_id=company_id)
     db.add(db_invoice)
-    db.commit()
+    db.commit() # Commit to get the db_invoice.id
     db.refresh(db_invoice)
+    print(f"Created invoice with ID: {db_invoice.id}")
+
+    # Now create the invoice items
+    if invoice.items:
+        for item_data in invoice.items:
+            db_item = InvoiceItem(**item_data.model_dump(), invoice_id=db_invoice.id)
+            db.add(db_item)
+            print(f"Creating invoice item for product ID: {db_item.product_id}")
+    
+    db.commit() # Commit the new items
+    db.refresh(db_invoice) # Refresh to load the items relationship
     return db_invoice
 
-def update_invoice(db: Session, invoice_id: UUID, invoice: PydanticInvoice):
+def update_invoice(db: Session, invoice_id: UUID, invoice_data: PydanticInvoice):
     print(f"Attempting to update invoice with ID: {invoice_id}")
-    print(f"Received update data: {invoice.model_dump()}")
+    print(f"Received update data: {invoice_data.model_dump()}")
 
     db_invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     
@@ -215,38 +228,31 @@ def update_invoice(db: Session, invoice_id: UUID, invoice: PydanticInvoice):
         return None
 
     try:
-        # Update top-level invoice fields
-        update_data = invoice.model_dump(exclude_unset=True)
-        
-        # Pop the 'items' from the update data as we will handle them separately
-        new_items_data = update_data.pop('items', None)
-
+        # Update top-level invoice fields from the new data
+        update_data = invoice_data.model_dump(exclude_unset=True, exclude={'items'})
         for key, value in update_data.items():
             setattr(db_invoice, key, value)
         
-        # --- Handle Invoice Items ---
-        if new_items_data is not None:
-            # 1. Delete old items
-            # Since we have cascade delete on the Invoice->items relationship,
-            # we can just delete them from the session.
-            for item in db_invoice.items:
-                db.delete(item)
-            db.flush() # Flush to apply the deletions before adding new items
-            print(f"Deleted old items for invoice {invoice_id}")
+        # --- Handle Invoice Items (Delete and Recreate) ---
+        new_items_data = invoice_data.items
 
-            # 2. Add new items
-            if new_items_data:
-                for item_data in new_items_data:
-                    # Ensure product_id is present before creating an item
-                    if 'product_id' in item_data and item_data['product_id']:
-                        new_item = InvoiceItem(
-                            invoice_id=db_invoice.id,
-                            **item_data
-                        )
-                        db.add(new_item)
-                        print(f"Adding new item for product ID: {item_data.get('product_id')}")
-                    else:
-                        print(f"Skipping item without product_id: {item_data}")
+        # 1. Delete old items
+        for item in db_invoice.items:
+            db.delete(item)
+        print(f"Deleted old items for invoice {invoice_id}")
+
+        # 2. Add new items
+        for item_data in new_items_data:
+            if item_data.product_id:
+                new_item = InvoiceItem(
+                    invoice_id=db_invoice.id,
+                    product_id=item_data.product_id,
+                    quantity=item_data.quantity,
+                    price=item_data.price,
+                    total=item_data.total
+                )
+                db.add(new_item)
+                print(f"Adding new item for product ID: {item_data.product_id}")
         
         db.commit()
         db.refresh(db_invoice)
