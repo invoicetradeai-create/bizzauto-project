@@ -1,28 +1,63 @@
+# worker.py
 import os
-from rq import SimpleWorker, Queue
-from redis_config import redis_conn
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
-# Before running the worker, ensure you have the ocr_tasks.py file with the
-# process_invoice_image_gcp function created.
-# You also need to have a Redis server running.
-# To start the worker, run this command from your terminal in the bizzauto_api directory:
-# python worker.py
-
-# Import the function that will be executed by the worker
+import json
+import time
+from redis_client import get_redis_client
 from ocr_tasks import process_invoice_image_gcp
+from uuid import UUID
 
-listen = ['default']
-
-if __name__ == '__main__':
-    # Create a list of Queue objects, each with the redis_conn
-    queues = [Queue(name, connection=redis_conn) for name in listen]
+def worker_process_ocr_jobs():
+    """
+    Continuously processes OCR jobs from the 'ocr_queue' in Redis.
+    """
+    print("OCR Worker started, waiting for jobs...")
     
-    # Use SimpleWorker for Windows compatibility, as it doesn't use os.fork()
-    worker = SimpleWorker(queues, connection=redis_conn)
-    worker.work()
+    # Initialize Redis client for the worker
+    # Using 'next' to get the client from the generator
+    redis_client_worker = next(get_redis_client())
 
-print("Worker started...")
+    while True:
+        try:
+            # blpop is a blocking operation, it will wait for an item on the list
+            # The '0' timeout means it will wait indefinitely
+            _, job_payload_json = redis_client_worker.blpop("ocr_queue", timeout=0)
+            
+            if job_payload_json:
+                print(f"Received job: {job_payload_json}")
+                try:
+                    job_payload = json.loads(job_payload_json)
+                    gcs_uri = job_payload.get("gcs_uri")
+                    company_id_str = job_payload.get("company_id")
+
+                    if not gcs_uri or not company_id_str:
+                        print(f"Skipping job due to missing 'gcs_uri' or 'company_id': {job_payload_json}")
+                        continue
+
+                    company_id = UUID(company_id_str)
+
+                    print(f"Processing OCR job for GCS URI: {gcs_uri}, Company ID: {company_id}")
+                    
+                    # Perform the actual OCR processing
+                    # This function should handle saving results to Supabase
+                    process_invoice_image_gcp(gcs_uri, company_id)
+                    
+                    print(f"Successfully processed OCR job for GCS URI: {gcs_uri}")
+
+                except json.JSONDecodeError:
+                    print(f"Error decoding JSON payload: {job_payload_json}")
+                    # Optionally, move to a "dead-letter" queue for inspection
+                except (TypeError, ValueError) as e:
+                    print(f"Invalid data in job payload: {job_payload_json}. Error: {e}")
+                except Exception as e:
+                    print(f"An unexpected error occurred while processing job {job_payload_json}. Error: {e}")
+        
+        except ConnectionError as e:
+            print(f"Redis connection error: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
+        except Exception as e:
+            print(f"An unexpected error occurred in the worker loop: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
+
+
+if __name__ == "__main__":
+    worker_process_ocr_jobs()
