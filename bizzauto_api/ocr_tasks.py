@@ -163,117 +163,92 @@ def parse_invoice_text(text, db, company_id):
         print("Client name not found or client not in database after advanced search.")
         return None
 
-    # 2) Find items block bounds
-    start_index = None
-    end_index = None
-    for i, line in enumerate(lines):
-        if "description" in line.lower() or "item" == line.lower().strip():
-            start_index = i + 1
-            break
-    # fallback: look for first numbered line
-    if start_index is None:
-        for i, line in enumerate(lines):
-            if re.match(r'^\d+[\.\)]?\s+', line):
-                start_index = i
-                break
-    # find subtotal or total as end
-    for i, line in enumerate(lines):
-        if "subtotal" in line.lower() or "sub total" in line.lower() or "subotal" in line.lower():
-            end_index = i
-            break
-    if end_index is None:
-        # fallback: find a line that looks like "total" near the end
-        for i in range(len(lines)-1, -1, -1):
-            if line := lines[i]:
-                if "total" in line.lower():
-                    end_index = i
-                    break
-    if start_index is None:
-        start_index = 0
-    if end_index is None or end_index <= start_index:
-        end_index = len(lines)
-
-    item_section = lines[start_index:end_index]
-    if not item_section:
-        print("No item section detected.")
-        return None
-
+    # 2) Find items block bounds and parse them
     items = []
+    try:
+        # Find start of item section using common headers
+        item_headers = ["description", "item", "charges", "service"]
+        start_index = -1
+        for i, line in enumerate(lines):
+            if any(header in line.lower() for header in item_headers):
+                start_index = i + 1
+                break
+        
+        if start_index == -1: raise ValueError("Item section start not found")
 
-    i = 0
-    while i < len(item_section):
-        line = item_section[i]
-        # detect numbered item or line that looks like a description
-        if re.match(r'^\d+[\.\)]?\s+', line):
-            description = re.sub(r'^\d+[\.\)]?\s*', '', line).strip()
-            prices = []
-            j = i + 1
-            while j < len(item_section):
-                nxt = item_section[j]
-                if re.match(r'^\d+[\.\)]?\s+', nxt):
-                    break
-                # extract any price-like numbers from the line
-                price_matches = re.findall(r'[\$]?\d{1,3}(?:[,]\d{3})*(?:\.\d+)?|\d+\.\d+', nxt)
-                if price_matches:
-                    for pm in price_matches:
-                        p = _parse_price_from_text(pm)
-                        if p is not None:
-                            prices.append(p)
-                else:
-                    # append to description if no prices found
-                    if nxt and not re.match(r'^[\-\—]{1,}$', nxt):
-                        description += " " + nxt
-                j += 1
+        # Find end of item section using common footers
+        item_footers = ["subtotal", "sub total", "tax", "total", "amount due", "payment", "thank you"]
+        end_index = len(lines)
+        for i in range(start_index, len(lines)):
+            if any(footer in lines[i].lower() for footer in item_footers):
+                end_index = i
+                break
 
-            # decide unit_price, total, quantity
-            if prices:
-                total = prices[-1]
-                unit_price = prices[-2] if len(prices) >= 2 else total
-                quantity = 1
-                if unit_price and unit_price > 0:
-                    quantity = max(1, round(total / unit_price))
+        item_section_lines = lines[start_index:end_index]
+        
+        # --- State-Machine Parser for Line Items ---
+        i = 0
+        while i < len(item_section_lines):
+            line = item_section_lines[i].strip()
+            
+            # Heuristic: If a line starts with a number, it's likely a quantity.
+            # But if it's a long string with text, it's a description.
+            # A good description line is mostly text.
+            is_description_like = len(re.findall(r'[a-zA-Z]', line)) > len(re.findall(r'[\d\$\.]', line))
+
+            if is_description_like and len(line) > 5: # Likely a description
+                description = line
+                # Look ahead for quantity, price, and amount on the next few lines
+                prices = []
+                qty = 1 # Default quantity
                 
-                item_data = {
-                    "description": description.strip(),
-                    "quantity": quantity,
-                    "price": unit_price,
-                    "total": total
-                }
-                process_item(item_data, items, db)
-            else:
-                print(f"⚠ Skipping line (no prices found): '{description}'")
+                # Check next 3 lines for numbers
+                lookahead_index = i + 1
+                while lookahead_index < min(i + 4, len(item_section_lines)):
+                    next_line = item_section_lines[lookahead_index]
+                    # Extract all numbers from the line
+                    price_matches = re.findall(r'[\$]?\d{1,3}(?:[,]\d{3})*(?:\.\d+)?', next_line)
+                    if price_matches:
+                        for p_str in price_matches:
+                            price_val = _parse_price_from_text(p_str)
+                            if price_val is not None:
+                                prices.append(price_val)
+                    lookahead_index += 1
+                
+                if prices:
+                    # Heuristic: largest number is total, second largest is price
+                    prices.sort(reverse=True)
+                    total = prices[0]
+                    unit_price = prices[1] if len(prices) > 1 else total
+                    
+                    # Try to find quantity if it's among the numbers
+                    potential_qtys = [p for p in prices if p < 100 and '.' not in str(p)] # Guess that qty is a small integer
+                    if len(potential_qtys) == 1 and potential_qtys[0] > 0:
+                        qty = int(potential_qtys[0])
+                        # Recalculate unit_price if qty is found
+                        if total / qty > 1:
+                            unit_price = total / qty
+                    elif unit_price > 0:
+                         # Estimate qty if not explicitly found
+                         estimated_qty = round(total/unit_price)
+                         if estimated_qty > 0 : qty = estimated_qty
 
-            i = j
-        else:
-            # line without leading number: try to parse it as an item with inline prices
-            price_matches = re.findall(r'[\$]?\d{1,3}(?:[,]\d{3})*(?:\.\d+)?|\d+\.\d+', line)
-            if price_matches:
-                # try to split description and prices
-                # assume description is part before the first price match
-                first_price_pos = re.search(r'[\$]?\d', line)
-                if first_price_pos:
-                    desc = line[:first_price_pos.start()].strip()
-                    prices = []
-                    for pm in price_matches:
-                        p = _parse_price_from_text(pm)
-                        if p is not None:
-                            prices.append(p)
-                    if prices:
-                        total = prices[-1]
-                        unit_price = prices[-2] if len(prices) >= 2 else total
-                        quantity = 1
-                        if unit_price and unit_price > 0:
-                            quantity = max(1, round(total / unit_price))
-                        
-                        item_data = {
-                            "description": desc,
-                            "quantity": quantity,
-                            "price": unit_price,
-                            "total": total
-                        }
-                        process_item(item_data, items, db)
 
+                    item_data = {
+                        "description": description,
+                        "quantity": qty,
+                        "price": unit_price,
+                        "total": total
+                    }
+                    process_item(item_data, items, db)
+                    # We consumed the lookahead lines, so we can skip them
+                    i = lookahead_index -1
+                
             i += 1
+            
+    except Exception as e:
+        print(f"Could not parse item section: {e}")
+        pass # Allow parsing to continue for total amount
 
     # 3) Extract total amount (look from bottom up for 'total' not 'subtotal')
     total_amount = 0.0
