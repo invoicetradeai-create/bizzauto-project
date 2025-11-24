@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 import sys
 import os
+import json # Added for JSON parsing
+from google.oauth2 import service_account # Added for service account credentials
+from google.cloud import vision # Added for Vision API client initialization
 
 # Add the directory containing main.py (which is bizzauto_api) to sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -69,6 +72,21 @@ async def startup_event():
             logging.info("Database tables created successfully")
         except Exception as e:
             logging.error(f"Database initialization failed: {str(e)}")
+
+    # Google Cloud Vision API Credentials Initialization
+    creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    if creds_json:
+        try:
+            # Create a temporary file for the service account key
+            with open("/tmp/sa.json", "w") as f:
+                f.write(creds_json)
+            # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/sa.json"
+            logging.info("Google Cloud Vision API credentials configured from environment variable.")
+        except Exception as e:
+            logging.error(f"Error configuring Google Cloud Vision API credentials: {e}")
+    else:
+        logging.warning("GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable not set. Google Cloud Vision API may not function correctly.")
 
     REDIS_URL = os.getenv("REDIS_URL")
     if REDIS_URL:

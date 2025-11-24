@@ -1,5 +1,4 @@
 import os
-import json
 from google.cloud import vision
 import io
 import re
@@ -7,7 +6,16 @@ from uuid import UUID
 from crud import get_client_by_name, get_product_by_name, create_invoice, create_invoice_item
 from models import Invoice, InvoiceItem
 from database import SessionLocal
-from google.oauth2 import service_account
+
+# --- Google Cloud Vision API Setup ---
+# IMPORTANT:
+# 1. Make sure you have enabled the Cloud Vision API in your Google Cloud project.
+# 2. Make sure you have downloaded a service account JSON key file.
+# 3. Set the environment variable GOOGLE_APPLICATION_CREDENTIALS to the path of your JSON key file.
+#    For example, in your terminal (on Linux/macOS):
+#    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/keyfile.json"
+#    In PowerShell (on Windows):
+#    $env:GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/keyfile.json"
 
 def process_invoice_image_gcp(gcs_uri, company_id: UUID):
     """
@@ -17,9 +25,7 @@ def process_invoice_image_gcp(gcs_uri, company_id: UUID):
     print(f"Processing image from GCS: {gcs_uri}")
 
     try:
-        creds_dict = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
-        credentials = service_account.Credentials.from_service_account_info(creds_dict)
-        client = vision.ImageAnnotatorClient(credentials=credentials)
+        client = vision.ImageAnnotatorClient()
 
         image = vision.Image()
         image.source.image_uri = gcs_uri # Use GCS URI
