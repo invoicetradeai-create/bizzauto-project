@@ -24,5 +24,11 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE 10000
 
-# Run the Uvicorn server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
+# Copy the run script into the container
+COPY run.sh .
+
+# Make the script executable
+RUN chmod +x run.sh
+
+# Set this script as the default command
+CMD ["./run.sh"]
