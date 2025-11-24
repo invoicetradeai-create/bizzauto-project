@@ -74,19 +74,26 @@ async def startup_event():
             logging.error(f"Database initialization failed: {str(e)}")
 
     # Google Cloud Vision API Credentials Initialization
-    creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-    if creds_json:
-        try:
-            # Create a temporary file for the service account key
-            with open("/tmp/sa.json", "w") as f:
-                f.write(creds_json)
-            # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/sa.json"
-            logging.info("Google Cloud Vision API credentials configured from environment variable.")
-        except Exception as e:
-            logging.error(f"Error configuring Google Cloud Vision API credentials: {e}")
-    else:
-        logging.warning("GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable not set. Google Cloud Vision API may not function correctly.")
+    try:
+        creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        if not creds_json:
+            raise ValueError("Env var GOOGLE_APPLICATION_CREDENTIALS_JSON is not set")
+
+        # Convert JSON string to Python dict
+        creds_dict = json.loads(creds_json)
+
+        # Fix private_key line breaks
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
+        # Write to temp file
+        with open("/tmp/sa.json", "w") as f:
+            json.dump(creds_dict, f)
+
+        # Set GOOGLE_APPLICATION_CREDENTIALS
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/sa.json"
+        logging.info("Google Cloud Vision API credentials configured from environment variable.")
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        logging.error(f"Error configuring Google Cloud Vision API credentials: {e}")
 
     REDIS_URL = os.getenv("REDIS_URL")
     if REDIS_URL:
