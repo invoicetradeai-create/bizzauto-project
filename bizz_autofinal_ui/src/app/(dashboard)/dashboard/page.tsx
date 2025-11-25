@@ -108,7 +108,22 @@ const Dashboard = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {[ { title: "Create Invoice", color: "bg-blue-500 hover:bg-blue-600", icon: <FileText className="h-6 w-6" />, desc: "Generate new invoice" }, { title: "Add Client", color: "bg-purple-500 hover:bg-purple-600", icon: <UserPlus className="h-6 w-6" />, desc: "Register new client" }, { title: "Send WhatsApp", color: "bg-green-500 hover:bg-green-600", icon: <Send className="h-6 w-6" />, desc: "Message customers" }, { title: "View Reports", color: "bg-orange-500 hover:bg-orange-600", icon: <FileBarChart className="h-6 w-6" />, desc: "Business analytics" }, ].map((item, i) => ( <Card key={i} className={`${item.color} text-white border-0 cursor-pointer transition-colors`}><CardContent className="p-5 md:p-6"><div className="flex items-start justify-between mb-4"><div className="h-12 w-12 rounded-lg bg-white/20 flex items-center justify-center">{item.icon}</div></div><h3 className="text-lg md:text-xl font-bold mb-1">{item.title}</h3><p className="text-sm opacity-90">{item.desc}</p></CardContent></Card> ))}
+                {[
+                  { title: "Create Invoice", color: "bg-blue-500 hover:bg-blue-600", icon: <FileText className="h-6 w-6" />, desc: "Generate new invoice", link: "/invoices" },
+                  { title: "Add Client", color: "bg-purple-500 hover:bg-purple-600", icon: <UserPlus className="h-6 w-6" />, desc: "Register new client", link: "/crm" },
+                  { title: "Send WhatsApp", color: "bg-green-500 hover:bg-green-600", icon: <Send className="h-6 w-6" />, desc: "Message customers", link: "/whatsapp" },
+                  { title: "View Reports", color: "bg-orange-500 hover:bg-orange-600", icon: <FileBarChart className="h-6 w-6" />, desc: "Business analytics", link: "/analytics" },
+                ].map((item, i) => (
+                  <Card key={i} className={`${item.color} text-white border-0 cursor-pointer transition-colors`} onClick={() => router.push(item.link)}>
+                    <CardContent className="p-5 md:p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="h-12 w-12 rounded-lg bg-white/20 flex items-center justify-center">{item.icon}</div>
+                      </div>
+                      <h3 className="text-lg md:text-xl font-bold mb-1">{item.title}</h3>
+                      <p className="text-sm opacity-90">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
