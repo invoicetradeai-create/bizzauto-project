@@ -28,7 +28,9 @@ interface InvoiceFormProps {
 export default function InvoiceForm({ onSubmit, onCancel, initialData }: InvoiceFormProps) {
   const [formData, setFormData] = useState({
     client_id: initialData?.client_id || '',
-    invoice_date: initialData?.invoice_date ? new Date(initialData.invoice_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    // Use the string directly if available to avoid timezone shifts. 
+    // For new invoices, use local date string (YYYY-MM-DD)
+    invoice_date: initialData?.invoice_date || new Date().toLocaleDateString('en-CA'), 
     total_amount: initialData?.total_amount || 0,
     payment_status: initialData?.payment_status || 'unpaid',
     notes: initialData?.notes || '',

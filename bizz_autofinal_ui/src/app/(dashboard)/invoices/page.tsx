@@ -68,14 +68,8 @@ export default function InvoicesPage() {
         }
       } else {
         // Create logic
-        const companyId = invoices.length > 0 ? invoices[0].company_id : "00000000-0000-0000-0000-000000000000";
-        if (companyId === "00000000-0000-0000-0000-000000000000" && invoices.length === 0) {
-          setError("Cannot create invoice: No company context available.");
-          setIsSheetOpen(false);
-          return;
-        }
-        const newInvoice = { ...invoiceData, company_id: companyId as UUID };
-        const response = await apiClient.post<Invoice>('/api/invoices', newInvoice);
+        // Backend currently injects company_id, so we don't need to send it or validate it from existing invoices
+        const response = await apiClient.post<Invoice>('/api/invoices', invoiceData);
         if (response.data) {
           await fetchInvoices();
           setIsSheetOpen(false);
@@ -83,7 +77,15 @@ export default function InvoicesPage() {
       }
       setError(null); // Clear any previous errors on successful submit
     } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || (editingInvoice ? "Failed to update invoice." : "Failed to create invoice."));
+      let errorMessage = err.message || (editingInvoice ? "Failed to update invoice." : "Failed to create invoice.");
+      if (err.response?.data?.detail) {
+        if (Array.isArray(err.response.data.detail)) {
+            errorMessage = err.response.data.detail.map((e: any) => e.msg).join(", ");
+        } else {
+            errorMessage = err.response.data.detail;
+        }
+      }
+      setError(errorMessage);
       console.error("Error submitting invoice:", err);
     }
   };
@@ -145,16 +147,16 @@ export default function InvoicesPage() {
           </div>
         </header>
 
-        <div className="p-6 flex justify-between items-center">
+        <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div><h1 className="text-2xl font-bold">Invoices</h1><p className="text-muted-foreground">Manage and track all your invoices</p></div>
-          <Button onClick={handleOpenCreateSheet} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="w-4 h-4 mr-2" />Create Invoice</Button>
+          <Button onClick={handleOpenCreateSheet} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" />Create Invoice</Button>
         </div>
 
         <div className="px-6 pb-6 flex-1 overflow-y-auto">
           {loading ? <p className="text-center">Loading...</p> : error ? <p className="text-center text-destructive">{error}</p> : (
-            <div className="border rounded-lg">
+            <div className="border rounded-lg overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-muted/50"><tr className="text-left text-muted-foreground"><th className="p-3">Invoice ID</th><th className="p-3">Client ID</th><th className="p-3">Date</th><th className="p-3">Amount</th><th className="p-3">Status</th><th className="p-3 text-right">Actions</th></tr></thead>
+                <thead className="bg-muted/50"><tr className="text-left text-muted-foreground whitespace-nowrap"><th className="p-3">Invoice ID</th><th className="p-3">Client ID</th><th className="p-3">Date</th><th className="p-3">Amount</th><th className="p-3">Status</th><th className="p-3 text-right">Actions</th></tr></thead>
                 <tbody>
                   {filteredInvoices.length > 0 ? filteredInvoices.map((invoice) => (
                     <tr key={invoice.id} className="border-b hover:bg-muted/50">
@@ -187,7 +189,7 @@ export default function InvoicesPage() {
       </div>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader><SheetTitle>{editingInvoice ? 'Edit Invoice' : 'Create New Invoice'}</SheetTitle></SheetHeader>
           <div className="py-4">
             <InvoiceForm
