@@ -1,0 +1,29 @@
+feat: Implement dynamic greeting, responsive invoice page, and modal
+
+This commit introduces several features and responsiveness improvements:
+
+- **Dashboard Dynamic Greeting:**
+  - Implemented a time-based greeting message (Good Morning, Afternoon, Evening, Night) on the dashboard.
+  - Corrected time ranges for greetings to match specified requirements.
+
+- **Invoice Page Responsiveness (Force-Fix):**
+  - Refactored the invoice listing page (`invoices/page.tsx`) for full responsiveness across mobile, tablet, and desktop.
+  - Desktop layout is preserved (centered, max-w-1100px, normal spacing).
+  - Mobile/tablet layouts are fully responsive:
+    - Table no longer stacks rows on mobile; instead, it uses horizontal scroll (`overflow-x-auto`, `whitespace-nowrap`).
+    - Invoice ID and Client ID columns use `break-all` for long text.
+    - Responsive container widths: mobile (full width), md (max-w-90%), lg/xl (max-w-1100px).
+    - Search bar and Add button align horizontally on desktop, stack vertically on mobile.
+    - Improved spacing, padding, and font sizes for mobile/tablet without affecting desktop.
+
+- **Create Invoice Modal Responsiveness:**
+  - Switched from Shadcn `Sheet` to `Dialog` component for the "Create Invoice" modal to ensure it is properly centered.
+  - Implemented full responsiveness for the modal (`InvoiceForm` component):
+    - Desktop: centered, max-w-xl/2xl, spacious layout.
+    - Mobile/Tablet: full screen width, reduced padding, full-width inputs/dropdowns/textareas, vertically stacked buttons.
+    - Added a subtle vertical gap under the Client ID input field.
+  - Added `dialog.tsx` component to `components/ui/` as it was missing.
+
+- **Sign Up Auto-Verification:**
+  - Modified frontend signup logic to remove email verification redirection and update success message, enabling immediate sign-in after registration.
+  - Backend already defaults new users to 'active' status.
