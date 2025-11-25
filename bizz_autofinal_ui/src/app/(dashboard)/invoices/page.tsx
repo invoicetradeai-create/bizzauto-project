@@ -155,7 +155,7 @@ export default function InvoicesPage() {
         <div className="px-6 pb-6 flex-1 overflow-y-auto">
           {loading ? <p className="text-center">Loading...</p> : error ? <p className="text-center text-destructive">{error}</p> : (
             <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-max">
                 <thead className="bg-muted/50"><tr className="text-left text-muted-foreground whitespace-nowrap"><th className="p-3">Invoice ID</th><th className="p-3">Client ID</th><th className="p-3">Date</th><th className="p-3">Amount</th><th className="p-3">Status</th><th className="p-3 text-right">Actions</th></tr></thead>
                 <tbody>
                   {filteredInvoices.length > 0 ? filteredInvoices.map((invoice) => (
