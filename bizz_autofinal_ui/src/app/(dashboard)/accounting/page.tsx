@@ -149,10 +149,12 @@ export default function AccountingPage() {
 
   return (
     <div className="flex min-h-screen bg-background overflow-hidden">
-      <Sidebar />
+      <div className="no-print">
+        <Sidebar />
+      </div>
 
-      <div className="flex-1 flex flex-col overflow-y-auto transition-all duration-300 lg:ml-64">
-        <header className="border-b bg-card px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+      <div className="flex-1 flex flex-col overflow-y-auto transition-all duration-300 lg:ml-64 print-full-width">
+        <header className="border-b bg-card px-4 py-3 flex items-center justify-between sticky top-0 z-40 no-print">
           <div className="flex items-center gap-3 flex-1">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild className="lg:hidden">
@@ -204,7 +206,7 @@ export default function AccountingPage() {
               View your sales, expenses, and stock reports
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 no-print">
             <Button onClick={handleExport}>
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -218,7 +220,7 @@ export default function AccountingPage() {
 
         <div className="px-4 md:px-6 pb-6">
           <Tabs defaultValue="sales_summary" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-3 no-print">
               <TabsTrigger value="sales_summary">Sales Summary</TabsTrigger>
               <TabsTrigger value="expense_report">Expense Report</TabsTrigger>
               <TabsTrigger value="stock_report">Stock Report</TabsTrigger>

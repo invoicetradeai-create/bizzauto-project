@@ -236,3 +236,39 @@ input[type="password"] {
     );
   }
 }
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-full-width {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Hide sidebar spacer */
+  .lg\:ml-64 {
+    margin-left: 0 !important;
+  }
+
+  /* Ensure table fits */
+  table {
+    width: 100% !important;
+    font-size: 12px;
+  }
+
+  /* Remove card shadows/borders for cleaner print */
+  .border, .shadow-sm, .shadow-md {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
