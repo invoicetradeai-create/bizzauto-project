@@ -57,9 +57,9 @@ export default function InvoiceForm({ onSubmit, onCancel, initialData }: Invoice
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="client_id">Client ID</Label>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-sm sm:text-base">
+      <div className="mb-3">
+        <Label htmlFor="client_id" className="text-sm">Client ID</Label>
         <Input
           id="client_id"
           name="client_id"
@@ -67,10 +67,11 @@ export default function InvoiceForm({ onSubmit, onCancel, initialData }: Invoice
           onChange={handleChange}
           placeholder="Enter Client UUID"
           required
+          className="w-full text-sm h-9"
         />
       </div>
       <div>
-        <Label htmlFor="invoice_date">Invoice Date</Label>
+        <Label htmlFor="invoice_date" className="text-sm">Invoice Date</Label>
         <Input
           id="invoice_date"
           name="invoice_date"
@@ -78,10 +79,11 @@ export default function InvoiceForm({ onSubmit, onCancel, initialData }: Invoice
           value={formData.invoice_date}
           onChange={handleChange}
           required
+          className="w-full text-sm h-9"
         />
       </div>
       <div>
-        <Label htmlFor="total_amount">Total Amount</Label>
+        <Label htmlFor="total_amount" className="text-sm">Total Amount</Label>
         <Input
           id="total_amount"
           name="total_amount"
@@ -89,40 +91,42 @@ export default function InvoiceForm({ onSubmit, onCancel, initialData }: Invoice
           value={formData.total_amount}
           onChange={handleChange}
           required
+          className="w-full text-sm h-9"
         />
       </div>
       <div>
-        <Label htmlFor="payment_status">Payment Status</Label>
+        <Label htmlFor="payment_status" className="text-sm">Payment Status</Label>
         <Select
           name="payment_status"
           value={formData.payment_status}
           onValueChange={(value) => handleSelectChange('payment_status', value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full text-sm h-9">
             <SelectValue placeholder="Select status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="partial">Partial</SelectItem>
+            <SelectItem value="unpaid" className="text-sm">Unpaid</SelectItem>
+            <SelectItem value="paid" className="text-sm">Paid</SelectItem>
+            <SelectItem value="partial" className="text-sm">Partial</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <div>
-        <Label htmlFor="notes">Notes</Label>
+        <Label htmlFor="notes" className="text-sm">Notes</Label>
         <Textarea
           id="notes"
           name="notes"
           value={formData.notes}
           onChange={handleChange}
           placeholder="Optional notes about the invoice"
+          className="w-full text-sm min-h-[80px]"
         />
       </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 w-full mt-4">
+        <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto text-sm h-9">
           Cancel
         </Button>
-        <Button type="submit">
+        <Button type="submit" className="w-full sm:w-auto text-sm h-9">
           {initialData ? 'Update Invoice' : 'Create Invoice'}
         </Button>
       </div>

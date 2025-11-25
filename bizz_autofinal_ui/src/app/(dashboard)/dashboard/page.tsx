@@ -43,6 +43,32 @@ const Dashboard = () => {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  const [greeting, setGreeting] = useState("");
+  const [emoji, setEmoji] = useState("");
+
+  useEffect(() => {
+    const getDynamicGreeting = () => {
+      const currentHour = new Date().getHours();
+      if (currentHour >= 5 && currentHour < 12) {
+        setGreeting("Good Morning");
+        setEmoji("👋");
+      } else if (currentHour >= 12 && currentHour < 17) { // 12 PM to 4:59 PM
+        setGreeting("Good Afternoon");
+        setEmoji("☀️");
+      } else if (currentHour >= 17 && currentHour < 21) { // 5 PM to 8:59 PM
+        setGreeting("Good Evening");
+        setEmoji("🌙");
+      } else { // 9 PM to 4:59 AM
+        setGreeting("Good Night");
+        setEmoji("😴");
+      }
+    };
+
+    getDynamicGreeting();
+    // Re-evaluate greeting if the component remains mounted across time boundaries
+    const interval = setInterval(getDynamicGreeting, 60 * 60 * 1000); // Check every hour
+    return () => clearInterval(interval);
+  }, []);
 
   // State for backend data
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -103,12 +129,12 @@ const Dashboard = () => {
           ) : summary && (
             <>
               <div className="mb-6 p-6 md:p-8 rounded-xl bg-gradient-to-r from-blue-500 via-purple-500 to-teal-500 text-white text-center md:text-left">
-                <h1 className="text-2xl md:text-4xl font-bold mb-2">Good Morning! 👋</h1>
+                <h1 className="text-2xl md:text-4xl font-bold mb-2">{greeting}! {emoji}</h1>
                 <p className="text-sm md:text-lg opacity-90">Welcome back! Here's your business overview for today.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {[ { title: "Create Invoice", color: "bg-blue-500 hover:bg-blue-600", icon: <FileText className="h-6 w-6" />, desc: "Generate new invoice" }, { title: "Add Client", color: "bg-purple-500 hover:bg-purple-600", icon: <UserPlus className="h-6 w-6" />, desc: "Register new client" }, { title: "Send WhatsApp", color: "bg-green-500 hover:bg-green-600", icon: <Send className="h-6 w-6" />, desc: "Message customers" }, { title: "View Reports", color: "bg-orange-500 hover:bg-orange-600", icon: <FileBarChart className="h-6 w-6" />, desc: "Business analytics" }, ].map((item, i) => ( <Card key={i} className={`${item.color} text-white border-0 cursor-pointer transition-colors`}><CardContent className="p-5 md:p-6"><div className="flex items-start justify-between mb-4"><div className="h-12 w-12 rounded-lg bg-white/20 flex items-center justify-center">{item.icon}</div></div><h3 className="text-lg md:text-xl font-bold mb-1">{item.title}</h3><p className="text-sm opacity-90">{item.desc}</p></CardContent></Card> ))}
+                {[ { title: "Create Invoice", path: "/invoices", color: "bg-blue-500 hover:bg-blue-600", icon: <FileText className="h-6 w-6" />, desc: "Generate new invoice" }, { title: "Add Client", path: "/crm", color: "bg-purple-500 hover:bg-purple-600", icon: <UserPlus className="h-6 w-6" />, desc: "Register new client" }, { title: "Send WhatsApp", path: "/whatsapp", color: "bg-green-500 hover:bg-green-600", icon: <Send className="h-6 w-6" />, desc: "Message customers" }, { title: "View Reports", path: "/analytics", color: "bg-orange-500 hover:bg-orange-600", icon: <FileBarChart className="h-6 w-6" />, desc: "Business analytics" }, ].map((item, i) => ( <Card key={i} className={`${item.color} text-white border-0 cursor-pointer transition-colors`} onClick={() => router.push(item.path)}><CardContent className="p-5 md:p-6"><div className="flex items-start justify-between mb-4"><div className="h-12 w-12 rounded-lg bg-white/20 flex items-center justify-center">{item.icon}</div></div><h3 className="text-lg md:text-xl font-bold mb-1">{item.title}</h3><p className="text-sm opacity-90">{item.desc}</p></CardContent></Card> ))}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">

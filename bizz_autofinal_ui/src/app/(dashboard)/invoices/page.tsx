@@ -8,6 +8,7 @@ import Sidebar, { NavigationContent } from "@/components/Sidebar";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import InvoiceForm from "@/components/InvoiceForm";
 import { UUID } from "crypto";
@@ -128,8 +129,8 @@ export default function InvoicesPage() {
   return (
     <div className="flex min-h-screen bg-background overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col transition-all duration-300 lg:ml-64">
-        <header className="border-b bg-card px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+      <div className="flex-1 flex flex-col transition-all duration-300 lg:ml-64 overflow-x-hidden">
+        <header className="border-b bg-card px-2 py-2 sm:px-4 sm:py-3 lg:px-6 lg:py-4 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-3 flex-1">
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger asChild className="lg:hidden"><Button variant="outline" size="icon"><Menu className="h-5 w-5" /></Button></SheetTrigger>
@@ -147,15 +148,15 @@ export default function InvoicesPage() {
           </div>
         </header>
 
-        <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div><h1 className="text-2xl font-bold">Invoices</h1><p className="text-muted-foreground">Manage and track all your invoices</p></div>
+        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div><h1 className="text-xl md:text-2xl font-bold">Invoices</h1><p className="text-muted-foreground text-sm md:text-base">Manage and track all your invoices</p></div>
           <Button onClick={handleOpenCreateSheet} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" />Create Invoice</Button>
         </div>
 
-        <div className="px-6 pb-6 flex-1 overflow-y-auto">
+        <div className="px-4 md:px-6 pb-6 overflow-x-auto">
           {loading ? <p className="text-center">Loading...</p> : error ? <p className="text-center text-destructive">{error}</p> : (
-            <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full text-sm min-w-max">
+            <div className="w-full bg-card rounded-lg border-border border text-sm overflow-x-auto">
+              <table className="w-full min-w-[800px]">
                 <thead className="bg-muted/50"><tr className="text-left text-muted-foreground whitespace-nowrap"><th className="p-3">Invoice ID</th><th className="p-3">Client ID</th><th className="p-3">Date</th><th className="p-3">Amount</th><th className="p-3">Status</th><th className="p-3 text-right">Actions</th></tr></thead>
                 <tbody>
                   {filteredInvoices.length > 0 ? filteredInvoices.map((invoice) => (
@@ -188,9 +189,9 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>{editingInvoice ? 'Edit Invoice' : 'Create New Invoice'}</SheetTitle></SheetHeader>
+      <Dialog open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <DialogContent className="w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-xl md:max-w-[90%] lg:max-w-xl xl:max-w-2xl">
+          <DialogHeader><DialogTitle className="text-xl sm:text-2xl">{editingInvoice ? 'Edit Invoice' : 'Create New Invoice'}</DialogTitle></DialogHeader>
           <div className="py-4">
             <InvoiceForm
               onSubmit={handleFormSubmit}
@@ -198,8 +199,8 @@ export default function InvoicesPage() {
               initialData={editingInvoice}
             />
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

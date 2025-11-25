@@ -76,8 +76,7 @@ export default function SignUpPage() {
             full_name: formData.fullName,
             role: formData.role,
           },
-          emailRedirectTo: `${window.location.origin}/verify-email?token={token}`,
-        },
+                 },
       });
 
       if (supabaseError) {
@@ -107,7 +106,7 @@ export default function SignUpPage() {
         }
       }
 
-      toast.success("Signup successful! Please check your email to confirm.");
+      toast.success("Signup successful! You can now sign in.");
       setLoading(false);
       router.push("/signin");
     } catch (err: any) { // This catch block handles errors from Supabase signup or unexpected errors

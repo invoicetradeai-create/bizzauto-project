@@ -60,7 +60,7 @@ export default function SignIn() {
     console.log("Supabase auth error:", error);
 
     if (error) {
-      if (error.message === "Email not confirmed") {
+     if (error.message.toLowerCase().includes("confirm")) {
         toast({
           title: "Email Not Verified",
           description: "Please confirm your email before logging in.",
