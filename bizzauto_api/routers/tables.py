@@ -55,7 +55,7 @@ async def get_record_by_id(table_name: str, id: str):
 async def create_record(table_name: str, record: Union[Company, Client, User, Supplier, Product, Invoice, InvoiceItem, Purchase, PurchaseItem, Expense, Lead, WhatsappLog, UploadedDoc, Setting, dict] = Body(...)):
     try:
         model = models.get(table_name)
-        if model:
+        if model and not isinstance(record, dict):
             record_data = record.dict()
         else:
             record_data = record
@@ -69,7 +69,7 @@ async def create_record(table_name: str, record: Union[Company, Client, User, Su
 async def update_record(table_name: str, id: str, record: Union[Company, Client, User, Supplier, Product, Invoice, InvoiceItem, Purchase, PurchaseItem, Expense, Lead, WhatsappLog, UploadedDoc, Setting, dict] = Body(...)):
     try:
         model = models.get(table_name)
-        if model:
+        if model and not isinstance(record, dict):
             record_data = record.dict(exclude_unset=True)
         else:
             record_data = record

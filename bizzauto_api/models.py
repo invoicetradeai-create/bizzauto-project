@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Json, ConfigDict, field_serializer
-from typing import Optional, List
+from typing import Optional, List, Any
 from uuid import UUID
 from datetime import datetime, date
 import json
@@ -200,7 +200,7 @@ class Setting(BaseModel):
     id: Optional[UUID] = None
     user_id: UUID
     key: str
-    value: Json
+    value: Any
 
     model_config = ConfigDict(from_attributes=True)
 
