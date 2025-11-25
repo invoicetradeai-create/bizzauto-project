@@ -3,15 +3,18 @@ from sqlalchemy.orm import Session
 from database import get_db
 from crud import get_invoices, get_clients, get_products, get_whatsapp_logs
 from datetime import datetime
+from dependencies import get_current_user
+from sql_models import User
 
 router = APIRouter()
 
 @router.get("/summary")
-async def get_dashboard_summary(db: Session = Depends(get_db)):
-    invoices = get_invoices(db, skip=0, limit=1000)
-    clients = get_clients(db, skip=0, limit=1000)
-    products = get_products(db, skip=0, limit=1000)
-    whatsapp_logs = get_whatsapp_logs(db, skip=0, limit=1000)
+async def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    company_id = current_user.company_id
+    invoices = get_invoices(db, skip=0, limit=1000, company_id=company_id)
+    clients = get_clients(db, skip=0, limit=1000, company_id=company_id)
+    products = get_products(db, skip=0, limit=1000, company_id=company_id)
+    whatsapp_logs = get_whatsapp_logs(db, skip=0, limit=1000, company_id=company_id)
 
     total_revenue = sum(i.total_amount for i in invoices if i.payment_status == 'paid')
     pending_payments = sum(i.total_amount for i in invoices if i.payment_status != 'paid')
