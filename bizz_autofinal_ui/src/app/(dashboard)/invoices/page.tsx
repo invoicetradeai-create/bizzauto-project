@@ -147,15 +147,15 @@ export default function InvoicesPage() {
           </div>
         </header>
 
-        <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div><h1 className="text-2xl font-bold">Invoices</h1><p className="text-muted-foreground">Manage and track all your invoices</p></div>
+        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div><h1 className="text-xl md:text-2xl font-bold">Invoices</h1><p className="text-muted-foreground text-sm md:text-base">Manage and track all your invoices</p></div>
           <Button onClick={handleOpenCreateSheet} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" />Create Invoice</Button>
         </div>
 
-        <div className="px-6 pb-6 flex-1 overflow-y-auto">
+        <div className="px-4 md:px-6 pb-6 overflow-x-auto">
           {loading ? <p className="text-center">Loading...</p> : error ? <p className="text-center text-destructive">{error}</p> : (
-            <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full text-sm min-w-max">
+            <div className="w-full bg-card rounded-lg border-border border text-sm overflow-x-auto">
+              <table className="w-full min-w-[800px]">
                 <thead className="bg-muted/50"><tr className="text-left text-muted-foreground whitespace-nowrap"><th className="p-3">Invoice ID</th><th className="p-3">Client ID</th><th className="p-3">Date</th><th className="p-3">Amount</th><th className="p-3">Status</th><th className="p-3 text-right">Actions</th></tr></thead>
                 <tbody>
                   {filteredInvoices.length > 0 ? filteredInvoices.map((invoice) => (
