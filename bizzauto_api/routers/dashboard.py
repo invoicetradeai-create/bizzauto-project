@@ -11,7 +11,11 @@ router = APIRouter()
 @router.get("/summary")
 async def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     company_id = current_user.company_id
+    print(f"Dashboard Access - User: {current_user.id}, Company: {company_id}")
+    
     invoices = get_invoices(db, skip=0, limit=1000, company_id=company_id)
+    print(f"Fetched {len(invoices)} invoices for company {company_id}")
+    
     clients = get_clients(db, skip=0, limit=1000, company_id=company_id)
     products = get_products(db, skip=0, limit=1000, company_id=company_id)
     whatsapp_logs = get_whatsapp_logs(db, skip=0, limit=1000, company_id=company_id)
