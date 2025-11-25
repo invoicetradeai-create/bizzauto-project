@@ -199,7 +199,7 @@ def get_invoices(db: Session, skip: int = 0, limit: int = 100):
 
 def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID):
     # Extract items and create the main invoice object
-    invoice_data = invoice.model_dump(exclude={'items'})
+    invoice_data = invoice.model_dump(exclude={'items', 'company_id'})
     db_invoice = Invoice(**invoice_data, company_id=company_id)
     db.add(db_invoice)
     db.commit() # Commit to get the db_invoice.id
