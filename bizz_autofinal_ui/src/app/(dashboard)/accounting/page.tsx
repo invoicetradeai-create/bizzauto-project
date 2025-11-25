@@ -77,17 +77,17 @@ export default function AccountingPage() {
 
   const filteredSalesSummary = salesSummary.filter(
     (sale) =>
-      sale.client_id.toLowerCase().includes(search.toLowerCase()) ||
-      sale.payment_status.toLowerCase().includes(search.toLowerCase())
+      (sale.client_id && sale.client_id.toLowerCase().includes(search.toLowerCase())) ||
+      (sale.payment_status && sale.payment_status.toLowerCase().includes(search.toLowerCase()))
   );
 
   const filteredExpenseReport = expenseReport.filter((expense) =>
-    expense.category.toLowerCase().includes(search.toLowerCase())
+    expense.category && expense.category.toLowerCase().includes(search.toLowerCase())
   );
 
   const filteredStockReport = stockReport.filter(
     (product) =>
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
+      (product.name && product.name.toLowerCase().includes(search.toLowerCase())) ||
       (product.sku && product.sku.toLowerCase().includes(search.toLowerCase()))
   );
 
