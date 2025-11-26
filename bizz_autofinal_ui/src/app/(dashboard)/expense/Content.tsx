@@ -19,6 +19,9 @@ export const DailyExpensesContent: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [summary, setSummary] = useState({ today: 0, month: 0, year: 0 });
+  const [exportingCSV, setExportingCSV] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false); // New state for WhatsApp loading
 
   const [form, setForm] = useState<NewExpenseForm>({
     date: new Date(),
@@ -58,6 +61,7 @@ export const DailyExpensesContent: React.FC = () => {
       console.error(err);
     }
   };
+
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setForm((prev: NewExpenseForm) => ({
@@ -67,12 +71,10 @@ export const DailyExpensesContent: React.FC = () => {
     }));
   };
 
-
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     setForm((prev: NewExpenseForm) => ({ ...prev, receiptFile: file ?? null }));
   };
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +126,66 @@ export const DailyExpensesContent: React.FC = () => {
     }
   };
 
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    if (format === 'csv') setExportingCSV(true);
+    if (format === 'pdf') setExportingPDF(true);
+
+    try {
+      const res = await fetch(`/api/expenses/export?format=${format}`);
+      if (!res.ok) throw new Error(`Failed to export ${format}`);
+
+      const blob = await res.blob();
+      const filename = `expenses.${format}`;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      alert(`Successfully exported ${format}!`);
+    } catch (err) {
+      console.error(`Error exporting ${format}:`, err);
+      alert(`Failed to export ${format}: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      if (format === 'csv') setExportingCSV(false);
+      if (format === 'pdf') setExportingPDF(false);
+    }
+  };
+
+  const handleSendWhatsApp = async () => {
+    setSendingWhatsApp(true);
+    try {
+      // Assuming the WhatsApp API expects some data, e.g., the current summary
+      const payload = {
+        message: `Expense Summary: Today: Rs ${summary.today}, This Month: Rs ${summary.month}, This Year: Rs ${summary.year}`,
+        // You might want to add recipient information here, e.g., 'to': '+1234567890'
+        // For this example, we assume the backend knows who to send it to or it's configured.
+      };
+
+      const res = await fetch('/api/send-meta-whatsapp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(`Failed to send WhatsApp message: ${errorData.message}`);
+      }
+
+      alert('Expense summary sent via WhatsApp successfully!');
+    } catch (err) {
+      console.error('Error sending WhatsApp message:', err);
+      alert(`Failed to send WhatsApp message: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSendingWhatsApp(false);
+    }
+  };
+
   const filtered = expenses.filter(e => {
     if (!search) return true;
     const s = search.toLowerCase();
@@ -139,11 +201,11 @@ export const DailyExpensesContent: React.FC = () => {
       <p className="text-sm text-muted-foreground">Track and manage business expenses</p>
     </div>
     <div className="flex flex-wrap items-center gap-2 overflow-x-auto">
-      <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-9">
-        <Download className="w-4 h-4 mr-2" /> Export CSV
+      <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-9" onClick={() => handleExport('csv')} disabled={exportingCSV}>
+        <Download className="w-4 h-4 mr-2" /> {exportingCSV ? 'Exporting...' : 'Export CSV'}
       </Button>
-      <Button variant="ghost" size="sm" className="flex-1 sm:flex-none h-9">
-        <FileText className="w-4 h-4 mr-2" /> Export PDF
+      <Button variant="ghost" size="sm" className="flex-1 sm:flex-none h-9" onClick={() => handleExport('pdf')} disabled={exportingPDF}>
+        <FileText className="w-4 h-4 mr-2" /> {exportingPDF ? 'Exporting...' : 'Export PDF'}
       </Button>
     </div>
   </div>
@@ -180,8 +242,8 @@ export const DailyExpensesContent: React.FC = () => {
     <Card className="p-3 sm:p-4">
       <div className="w-full">
         <p className="text-sm text-muted-foreground mb-2">Actions</p>
-        <Button size="sm" className="w-full h-8 sm:h-9" onClick={() => alert('Send via WhatsApp not implemented')}>
-          Send (WhatsApp)
+        <Button size="sm" className="w-full h-8 sm:h-9" onClick={handleSendWhatsApp} disabled={sendingWhatsApp}>
+          {sendingWhatsApp ? 'Sending...' : 'Send (WhatsApp)'}
         </Button>
       </div>
     </Card>

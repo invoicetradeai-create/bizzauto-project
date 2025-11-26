@@ -30,6 +30,9 @@ class User(BaseModel):
     email: str
     password_hash: Optional[str] = None
     role: str
+    business_name: Optional[str] = None
+    location: Optional[str] = None
+    contact_number: Optional[str] = None
     status: Optional[str] = 'active'
 
     model_config = ConfigDict(from_attributes=True)

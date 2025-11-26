@@ -71,6 +71,9 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     password_hash = Column(String, nullable=True)
     role = Column(String)
+    business_name = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    contact_number = Column(String, nullable=True)
     status = Column(String, default='active')
 
     company = relationship("Company", back_populates="users")

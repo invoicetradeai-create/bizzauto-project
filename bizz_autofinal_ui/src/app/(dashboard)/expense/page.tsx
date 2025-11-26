@@ -7,8 +7,10 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescri
 import { Button } from '@/components/ui/button';
 import { Search, Menu, Sun, Moon, Bell } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar} from "@/components/ui/avatar";
+import { AvatarFallback } from '@/components/ui/avatar';
 import { DailyExpensesContent } from './Content';
+import UserAvatar from '@/components/UserAvatar';
 
 
 const DailyExpensesLayout: React.FC = () => {
@@ -80,11 +82,9 @@ const DailyExpensesLayout: React.FC = () => {
     ) : null}
   </Button>
 
-  <Avatar className="flex-shrink-0 h-7 w-7 sm:h-10 sm:w-10 cursor-pointer hover:scale-105 transition-transform duration-200 ml-0 rounded-full overflow-hidden">
-    <AvatarFallback className="bg-primary text-primary-foreground text-[13px]">
-      {typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}
-    </AvatarFallback>
-  </Avatar>
+   <Avatar className="cursor-pointer hover:scale-105 transition-transform duration-200">
+              <AvatarFallback className="bg-primary text-primary-foreground">{typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
+            </Avatar>
 </div>
 
 

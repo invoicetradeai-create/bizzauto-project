@@ -57,7 +57,7 @@ export default function InvoiceForm({ onSubmit, onCancel, initialData }: Invoice
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-sm sm:text-base">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-y-4 text-sm sm:text-base h-full overflow-y-auto p-4">
       <div className="mb-3">
         <Label htmlFor="client_id" className="text-sm">Client ID</Label>
         <Input

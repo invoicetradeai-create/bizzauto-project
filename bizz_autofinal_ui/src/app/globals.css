@@ -235,4 +235,30 @@ input[type="password"] {
       var(--app-gradient-to)
     );
   }
+
+  /*
+    Responsive styles for shadcn/ui DialogContent.
+    This class should be applied to the <DialogContent> component
+    wherever the InvoiceForm is rendered.
+  */
+  .dialog-responsive {
+    /* Base styles for small screens (mobile) */
+    @apply w-[calc(100%-2rem)] max-w-full; /* 1rem gap on each side */
+    margin-left: auto;
+    margin-right: auto;
+    /* Ensure it doesn't get too wide on tablets but maintains gaps */
+    @media (min-width: 640px) { /* sm breakpoint */
+      @apply max-w-lg; /* Example max-width for tablets */
+      width: calc(100% - 4rem); /* 2rem gap on each side */
+    }
+    @media (min-width: 768px) { /* md breakpoint */
+      @apply max-w-2xl; /* Example max-width for larger tablets */
+    }
+    @media (min-width: 1024px) { /* lg breakpoint */
+      @apply max-w-3xl; /* Example max-width for desktops, maintaining original desktop design */
+      width: auto; /* Revert to default width for desktop */
+    }
+    /* Ensure scrolling within the modal if content overflows */
+    @apply h-[90vh] sm:h-auto overflow-y-auto;
+  }
 }
