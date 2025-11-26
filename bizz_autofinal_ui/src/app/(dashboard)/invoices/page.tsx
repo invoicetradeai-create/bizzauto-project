@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/co
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import InvoiceForm from "@/components/InvoiceForm";
+import OcrUploadDialog from "@/components/OcrUploadDialog";
 import { UUID } from "crypto";
 import { apiClient } from "@/lib/api-client";
 
@@ -32,6 +33,7 @@ export default function InvoicesPage() {
   const [search, setSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isOcrDialogOpen, setIsOcrDialogOpen] = useState(false);
   
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -84,7 +86,8 @@ export default function InvoicesPage() {
       if (err.response?.data?.detail) {
         if (Array.isArray(err.response.data.detail)) {
             errorMessage = err.response.data.detail.map((e: any) => e.msg).join(", ");
-        } else {
+        }
+        else {
             errorMessage = err.response.data.detail;
         }
       }
@@ -116,6 +119,10 @@ export default function InvoicesPage() {
   const handleOpenEditSheet = (invoice: Invoice) => {
     setEditingInvoice(invoice);
     setIsSheetOpen(true);
+  };
+
+  const handleUploadSuccess = () => {
+    fetchInvoices();
   };
 
   const filteredInvoices = invoices.filter(
@@ -156,7 +163,10 @@ export default function InvoicesPage() {
 
         <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div><h1 className="text-xl md:text-2xl font-bold">Invoices</h1><p className="text-muted-foreground text-sm md:text-base">Manage and track all your invoices</p></div>
-          <Button onClick={handleOpenCreateSheet} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" />Create Invoice</Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsOcrDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"><Upload className="w-4 h-4 mr-2" />Upload Invoice</Button>
+            <Button onClick={handleOpenCreateSheet} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" />Create Invoice</Button>
+          </div>
         </div>
 
         <div className="px-4 md:px-6 pb-6 overflow-x-auto">
@@ -207,6 +217,12 @@ export default function InvoicesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <OcrUploadDialog 
+        open={isOcrDialogOpen} 
+        onOpenChange={setIsOcrDialogOpen} 
+        onUploadSuccess={handleUploadSuccess}
+        />
+
     </div>
   );
 }
