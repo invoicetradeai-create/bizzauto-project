@@ -58,8 +58,11 @@ def get_product(db: Session, product_id: UUID):
 def get_product_by_name(db: Session, name: str):
     return db.query(Product).filter(Product.name.ilike(f"%{name}%")).first()
 
-def get_products(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Product).offset(skip).limit(limit).all()
+def get_products(db: Session, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    query = db.query(Product)
+    if company_id:
+        query = query.filter(Product.company_id == company_id)
+    return query.offset(skip).limit(limit).all()
 
 def create_product(db: Session, product: PydanticProduct):
     db_product = Product(**product.model_dump(exclude_none=True))
@@ -107,8 +110,11 @@ def get_client_by_name(db: Session, name: str):
     return db.query(Client).filter(Client.name == name).first()
 
 
-def get_clients(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Client).offset(skip).limit(limit).all()
+def get_clients(db: Session, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    query = db.query(Client)
+    if company_id:
+        query = query.filter(Client.company_id == company_id)
+    return query.offset(skip).limit(limit).all()
 
 def create_client(db: Session, client: PydanticClient):
     db_client = Client(**client.model_dump(exclude_none=True))
@@ -194,12 +200,15 @@ def delete_supplier(db: Session, supplier_id: UUID):
 def get_invoice(db: Session, invoice_id: UUID):
     return db.query(Invoice).filter(Invoice.id == invoice_id).first()
 
-def get_invoices(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Invoice).offset(skip).limit(limit).all()
+def get_invoices(db: Session, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    query = db.query(Invoice)
+    if company_id:
+        query = query.filter(Invoice.company_id == company_id)
+    return query.offset(skip).limit(limit).all()
 
 def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID):
     # Extract items and create the main invoice object
-    invoice_data = invoice.model_dump(exclude={'items'})
+    invoice_data = invoice.model_dump(exclude={'items', 'company_id'})
     db_invoice = Invoice(**invoice_data, company_id=company_id)
     db.add(db_invoice)
     db.commit() # Commit to get the db_invoice.id
@@ -428,8 +437,11 @@ def delete_lead(db: Session, lead_id: UUID):
 def get_whatsapp_log(db: Session, whatsapp_log_id: UUID):
     return db.query(WhatsappLog).filter(WhatsappLog.id == whatsapp_log_id).first()
 
-def get_whatsapp_logs(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(WhatsappLog).offset(skip).limit(limit).all()
+def get_whatsapp_logs(db: Session, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    query = db.query(WhatsappLog)
+    if company_id:
+        query = query.filter(WhatsappLog.company_id == company_id)
+    return query.offset(skip).limit(limit).all()
 
 def create_whatsapp_log(db: Session, whatsapp_log: PydanticWhatsappLog):
     db_whatsapp_log = WhatsappLog(**whatsapp_log.model_dump(exclude_none=True))

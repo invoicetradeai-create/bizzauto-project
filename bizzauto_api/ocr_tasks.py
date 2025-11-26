@@ -50,11 +50,10 @@ def process_invoice_image_gcp(gcs_uri, company_id: UUID):
             if parsed_data and parsed_data.get("client_id") and parsed_data.get("items"):
                 # Create Invoice
                 invoice_data = Invoice(
-                    company_id=company_id,
                     client_id=parsed_data["client_id"],
                     total_amount=parsed_data["total_amount"]
                 )
-                db_invoice = create_invoice(db=db, invoice=invoice_data)
+                db_invoice = create_invoice(db=db, invoice=invoice_data, company_id=company_id)
                 print(f"Created invoice with ID: {db_invoice.id}")
 
                 # Create Invoice Items

@@ -7,4 +7,18 @@ const apiClient = axios.create({
   },
 });
 
+<<<<<<< HEAD
 export { apiClient };
+=======
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const userId = localStorage.getItem("user_id");
+    if (userId) {
+      config.headers["X-User-Id"] = userId;
+    }
+  }
+  return config;
+});
+
+export { apiClient };
+>>>>>>> 15e70f7dfee8b8712abec96744c07aa12709460f

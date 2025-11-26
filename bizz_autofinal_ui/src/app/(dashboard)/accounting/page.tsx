@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { apiClient } from "@/lib/api-client";
 import { API_ENDPOINTS } from "@/lib/api-config";
-import { Plus, Printer, Moon, Sun, Search, Bell, Menu } from "lucide-react";
+import { Download, Printer, Moon, Sun, Search, Bell, Menu } from "lucide-react";
 import Sidebar, { NavigationContent } from "@/components/Sidebar";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -51,6 +51,7 @@ export default function AccountingPage() {
   const [stockReport, setStockReport] = useState<StockReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("sales_summary");
 
   useEffect(() => {
     fetchReports();
@@ -91,6 +92,53 @@ export default function AccountingPage() {
       (product.sku && product.sku.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExport = () => {
+    let dataToExport: any[] = [];
+    let filename = "report";
+
+    if (activeTab === "sales_summary") {
+      dataToExport = filteredSalesSummary;
+      filename = "sales_summary";
+    } else if (activeTab === "expense_report") {
+      dataToExport = filteredExpenseReport;
+      filename = "expense_report";
+    } else if (activeTab === "stock_report") {
+      dataToExport = filteredStockReport;
+      filename = "stock_report";
+    }
+
+    if (dataToExport.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    const headers = Object.keys(dataToExport[0]).join(",");
+    const csvContent = [
+      headers,
+      ...dataToExport.map((row) =>
+        Object.values(row)
+          .map((val) => `"${val}"`)
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${filename}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen text-gray-600">Loading reports...</div>;
   }
@@ -101,10 +149,12 @@ export default function AccountingPage() {
 
   return (
     <div className="flex min-h-screen bg-background overflow-hidden">
-      <Sidebar />
+      <div className="no-print">
+        <Sidebar />
+      </div>
 
-      <div className="flex-1 flex flex-col overflow-y-auto transition-all duration-300 lg:ml-64">
-        <header className="border-b bg-card px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+      <div className="flex-1 flex flex-col overflow-y-auto transition-all duration-300 lg:ml-64 print-full-width">
+        <header className="border-b bg-card px-4 py-3 flex items-center justify-between sticky top-0 z-40 no-print">
           <div className="flex items-center gap-3 flex-1">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild className="lg:hidden">
@@ -156,12 +206,12 @@ export default function AccountingPage() {
               View your sales, expenses, and stock reports
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
+          <div className="flex gap-2 no-print">
+            <Button onClick={handleExport}>
+              <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Button>
+            <Button onClick={handlePrint}>
               <Printer className="w-4 h-4 mr-2" />
               Print
             </Button>
@@ -169,8 +219,8 @@ export default function AccountingPage() {
         </div>
 
         <div className="px-4 md:px-6 pb-6">
-          <Tabs defaultValue="sales_summary">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue="sales_summary" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3 no-print">
               <TabsTrigger value="sales_summary">Sales Summary</TabsTrigger>
               <TabsTrigger value="expense_report">Expense Report</TabsTrigger>
               <TabsTrigger value="stock_report">Stock Report</TabsTrigger>
