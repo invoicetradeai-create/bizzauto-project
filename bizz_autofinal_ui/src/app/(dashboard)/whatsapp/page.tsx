@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/lib/api-config';
 import { FiClock, FiSend, FiList } from 'react-icons/fi';
 import Sidebar, { NavigationContent } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Menu, Search, Bell, Sun, Moon } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -30,7 +32,8 @@ type ApiResponse<T> = {
 // --- Main Component ---
 export default function WhatsappPage() {
   // --- State Management ---
-  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -160,12 +163,14 @@ export default function WhatsappPage() {
                 </Button>
 
                 <Button variant="ghost" size="icon" onClick={toggleTheme}>
-                {theme === "dark" ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5 text-blue-500" />}
+                {mounted && theme === "dark" ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5 text-blue-500" />}
                 </Button>
 
-                <Avatar className="cursor-pointer hover:scale-105 transition-transform duration-200">
-                <AvatarFallback className="bg-primary text-primary-foreground">{typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
-                </Avatar>
+                <div onClick={() => router.push('/settings')} className="cursor-pointer hover:scale-105 transition-transform duration-200">
+                  <Avatar>
+                    <AvatarFallback className="bg-primary text-primary-foreground">{mounted ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
+                  </Avatar>
+                </div>
             </div>
         </header>
 

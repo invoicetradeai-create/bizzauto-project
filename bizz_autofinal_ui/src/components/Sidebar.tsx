@@ -43,6 +43,14 @@ export const NavigationContent = ({ setOpen }: { setOpen?: (open: boolean) => vo
 
   React.useEffect(() => {
     const fetchCurrentUserData = async (userId: string) => {
+      // Basic UUID validation regex
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      if (!userId || !uuidRegex.test(userId)) {
+        console.warn("Invalid or missing user ID, skipping fetch:", userId);
+        return;
+      }
+
       try {
         const userRes = await apiClient.get<UserType>(`/api/users/${userId}`);
         if (userRes.data) {

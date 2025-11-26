@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, Bell, Menu, Search, Upload, Plus, MoreHorizontal, Trash2, Edit } from "lucide-react";
@@ -26,7 +27,8 @@ type Invoice = {
 };
 
 export default function InvoicesPage() {
-  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [search, setSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -143,8 +145,12 @@ export default function InvoicesPage() {
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="relative"><Bell className="h-4 w-4" /><span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-destructive rounded-full text-xs flex items-center justify-center">3</span></Button>
-            <Button variant="ghost" size="icon" onClick={toggleTheme}>{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
-            <Avatar className="cursor-pointer"><AvatarFallback className="bg-primary text-primary-foreground">{typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback></Avatar>
+            <Button variant="ghost" size="icon" onClick={toggleTheme}>{mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
+            <div onClick={() => router.push('/settings')} className="cursor-pointer hover:scale-105 transition-transform duration-200">
+              <Avatar>
+                <AvatarFallback className="bg-primary text-primary-foreground">{mounted ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
+              </Avatar>
+            </div>
           </div>
         </header>
 

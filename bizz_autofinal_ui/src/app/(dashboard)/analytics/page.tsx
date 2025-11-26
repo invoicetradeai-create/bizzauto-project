@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, Bell, Menu, Search } from "lucide-react";
@@ -36,7 +37,8 @@ import { API_ENDPOINTS } from "@/lib/api-config";
 import { apiClient } from "@/lib/api-client";
 
 export default function AnalyticsPage() {
-  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [activeTab, setActiveTab] = useState("Revenue");
   const [open, setOpen] = useState(false);
 
@@ -233,18 +235,20 @@ export default function AnalyticsPage() {
     onClick={toggleTheme}
     className="hover:bg-blue-50 dark:hover:bg-gray-800 transition p-[5px]"
   >
-    {theme === "dark" ? (
+    {mounted && theme === "dark" ? (
       <Sun className="h-4 w-4 text-yellow-400" />
     ) : (
       <Moon className="h-4 w-4 text-blue-500" />
     )}
   </Button>
 
-  <Avatar className="cursor-pointer hover:scale-105 transition-transform duration-200 ml-[1px]">
-    <AvatarFallback className="bg-primary text-primary-foreground text-[13px]">
-      {typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}
-    </AvatarFallback>
-  </Avatar>
+  <div onClick={() => router.push('/settings')} className="cursor-pointer hover:scale-105 transition-transform duration-200 ml-[1px]">
+    <Avatar>
+      <AvatarFallback className="bg-primary text-primary-foreground text-[13px]">
+        {mounted ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}
+      </AvatarFallback>
+    </Avatar>
+  </div>
 </div>
 
 

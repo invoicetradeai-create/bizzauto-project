@@ -235,7 +235,6 @@ input[type="password"] {
       var(--app-gradient-to)
     );
   }
-<<<<<<< HEAD
 
   /*
     Responsive styles for shadcn/ui DialogContent.
@@ -261,7 +260,7 @@ input[type="password"] {
     }
     /* Ensure scrolling within the modal if content overflows */
     @apply h-[90vh] sm:h-auto overflow-y-auto;
-=======
+  }
 }
 
 /* Print Styles */
@@ -297,6 +296,5 @@ input[type="password"] {
   body {
     background: white !important;
     color: black !important;
->>>>>>> 15e70f7dfee8b8712abec96744c07aa12709460f
   }
 }

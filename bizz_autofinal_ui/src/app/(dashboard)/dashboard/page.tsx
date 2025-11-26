@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Users, DollarSign, Clock, Box, MessageSquare, FileText,
   UserPlus, Send, FileBarChart, Bell, Search, Sun, Moon, Menu
@@ -42,7 +43,7 @@ const PIE_CHART_COLORS = ["#10B981", "#F59E0B", "#EF4444", "#6B7280"];
 
 const Dashboard = () => {
   const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [open, setOpen] = useState(false);
   const [greeting, setGreeting] = useState("");
   const [emoji, setEmoji] = useState("");
@@ -117,8 +118,12 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-[0px] sm:gap-[1px] md:gap-[2px] ml-[1px]">
             <Button variant="ghost" size="icon" className="relative hover:bg-blue-50 dark:hover:bg-gray-800 transition p-[5px]"><Bell className="h-4 w-4" /><span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-destructive rounded-full text-[9px] text-white flex items-center justify-center">3</span></Button>
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="hover:bg-blue-50 dark:hover:bg-gray-800 transition p-[5px]">{theme === "dark" ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-blue-500" />}</Button>
-            <Avatar className="cursor-pointer hover:scale-105 transition-transform duration-200 ml-[1px]"><AvatarFallback className="bg-primary text-primary-foreground text-[13px]">{typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback></Avatar>
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="hover:bg-blue-50 dark:hover:bg-gray-800 transition p-[5px]">{mounted && theme === "dark" ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-blue-500" />}</Button>
+            <div onClick={() => router.push('/settings')} className="cursor-pointer hover:scale-105 transition-transform duration-200 ml-[1px]">
+              <Avatar>
+                <AvatarFallback className="bg-primary text-primary-foreground text-[13px]">{mounted ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
+              </Avatar>
+            </div>
           </div>
         </header>
 

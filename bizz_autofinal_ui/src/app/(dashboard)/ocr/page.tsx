@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,10 +22,11 @@ import { useTheme } from "@/hooks/use-theme";
 import { apiClient } from "@/lib/api-client";
 
 export default function OcrUploadPage() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [open, setOpen] = useState(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,8 +91,12 @@ export default function OcrUploadPage() {
           </div>
           <div className="flex items-center gap-[0px] sm:gap-[1px] md:gap-[2px] ml-[1px]">
             <Button variant="ghost" size="icon" className="relative hover:bg-blue-50 dark:hover:bg-gray-800 transition p-[5px]"><Bell className="h-4 w-4" /><span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-destructive rounded-full text-[9px] text-white flex items-center justify-center">3</span></Button>
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="hover:bg-blue-50 dark:hover:bg-gray-800 transition p-[5px]">{theme === "dark" ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-blue-500" />}</Button>
-            <Avatar className="cursor-pointer hover:scale-105 transition-transform duration-200 ml-[1px]"><AvatarFallback className="bg-primary text-primary-foreground text-[13px]">{typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback></Avatar>
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="hover:bg-blue-50 dark:hover:bg-gray-800 transition p-[5px]">{mounted && theme === "dark" ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-blue-500" />}</Button>
+            <div onClick={() => router.push('/settings')} className="cursor-pointer hover:scale-105 transition-transform duration-200 ml-[1px]">
+              <Avatar>
+                <AvatarFallback className="bg-primary text-primary-foreground text-[13px]">{mounted ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
+              </Avatar>
+            </div>
           </div>
         </header>
 

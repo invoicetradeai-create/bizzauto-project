@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -43,7 +44,8 @@ interface StockReport {
 }
 
 export default function AccountingPage() {
-  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [salesSummary, setSalesSummary] = useState<SalesSummary[]>([]);
@@ -190,12 +192,14 @@ export default function AccountingPage() {
             </Button>
 
             <Button variant="ghost" size="icon" onClick={toggleTheme}>
-              {theme === "dark" ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5 text-blue-500" />}
+              {mounted && theme === "dark" ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5 text-blue-500" />}
             </Button>
 
-            <Avatar className="cursor-pointer hover:scale-105 transition-transform duration-200">
-              <AvatarFallback className="bg-primary text-primary-foreground">{typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
-            </Avatar>
+            <div onClick={() => router.push('/settings')} className="cursor-pointer hover:scale-105 transition-transform duration-200">
+              <Avatar>
+                <AvatarFallback className="bg-primary text-primary-foreground">{mounted ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
+              </Avatar>
+            </div>
           </div>
         </header>
 

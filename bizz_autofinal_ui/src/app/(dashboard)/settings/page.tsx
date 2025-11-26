@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, Bell, Menu, Search, User, Mail, Phone, Building, Lock, Key } from "lucide-react";
@@ -49,8 +50,17 @@ type UserType = {
 };
 
 export default function SettingsPage() {
-  const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState("Profile");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { theme, toggleTheme, mounted } = useTheme();
+  
+  const initialTab = searchParams.get("tab");
+  // Capitalize the first letter if it exists, otherwise default to "Profile"
+  const defaultTab = initialTab 
+    ? initialTab.charAt(0).toUpperCase() + initialTab.slice(1) 
+    : "Profile";
+
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +76,19 @@ export default function SettingsPage() {
 
   // State to map setting keys to their database IDs
   const [settingsMap, setSettingsMap] = useState<Record<string, UUID>>({});
+
+  useEffect(() => {
+    // Sync active tab with URL
+    const tab = searchParams.get("tab");
+    if (tab) {
+      setActiveTab(tab.charAt(0).toUpperCase() + tab.slice(1));
+    }
+  }, [searchParams]);
+
+  const handleTabClick = (tab: string) => {
+    setActiveTab(tab);
+    router.push(`/settings?tab=${tab.toLowerCase()}`);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -168,8 +191,12 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="relative"><Bell className="h-4 w-4" /><span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-destructive rounded-full text-xs flex items-center justify-center">3</span></Button>
-            <Button variant="ghost" size="icon" onClick={toggleTheme}>{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
-            <Avatar className="cursor-pointer"><AvatarFallback className="bg-primary text-primary-foreground">{typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback></Avatar>
+            <Button variant="ghost" size="icon" onClick={toggleTheme}>{mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
+            <div onClick={() => router.push('/settings')} className="cursor-pointer hover:scale-105 transition-transform duration-200">
+              <Avatar>
+                <AvatarFallback className="bg-primary text-primary-foreground">{mounted ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
+              </Avatar>
+            </div>
           </div>
         </header>
 
@@ -179,7 +206,7 @@ export default function SettingsPage() {
 
           <div className="flex flex-wrap gap-3 mb-6">
             {["Profile", "Notifications", "Integrations"].map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-full text-sm font-medium shadow transition-colors ${activeTab === tab ? "bg-blue-600 text-white" : "bg-card hover:bg-muted"}`}>
+              <button key={tab} onClick={() => handleTabClick(tab)} className={`px-4 py-2 rounded-full text-sm font-medium shadow transition-colors ${activeTab === tab ? "bg-blue-600 text-white" : "bg-card hover:bg-muted"}`}>
                 {tab}
               </button>
             ))}

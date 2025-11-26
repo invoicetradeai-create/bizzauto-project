@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Input } from "@/components/ui/input";
 import Sidebar, { NavigationContent } from '@/components/Sidebar';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -10,14 +11,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { Avatar} from "@/components/ui/avatar";
 import { AvatarFallback } from '@/components/ui/avatar';
 import { DailyExpensesContent } from './Content';
-import UserAvatar from '@/components/UserAvatar';
 
 
 const DailyExpensesLayout: React.FC = () => {
-  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  React.useEffect(() => { setMounted(true); }, []);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-blue-900 overflow-hidden">
@@ -73,18 +72,18 @@ const DailyExpensesLayout: React.FC = () => {
     onClick={toggleTheme}
     className="hover:bg-blue-50 dark:hover:bg-gray-800 transition p-2 rounded"
   >
-    {mounted ? (
-      theme === "dark" ? (
-        <Sun className="h-4 w-4 text-yellow-400" />
-      ) : (
-        <Moon className="h-4 w-4 text-blue-500" />
-      )
-    ) : null}
+    {mounted && theme === "dark" ? (
+      <Sun className="h-4 w-4 text-yellow-400" />
+    ) : (
+      <Moon className="h-4 w-4 text-blue-500" />
+    )}
   </Button>
 
-   <Avatar className="cursor-pointer hover:scale-105 transition-transform duration-200">
-              <AvatarFallback className="bg-primary text-primary-foreground">{typeof window !== 'undefined' ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
-            </Avatar>
+   <div onClick={() => router.push('/settings')} className="cursor-pointer hover:scale-105 transition-transform duration-200">
+      <Avatar>
+        <AvatarFallback className="bg-primary text-primary-foreground">{mounted ? localStorage.getItem("user_avatar")?.charAt(0).toUpperCase() || 'M' : 'M'}</AvatarFallback>
+      </Avatar>
+   </div>
 </div>
 
 
