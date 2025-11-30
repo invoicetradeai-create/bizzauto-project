@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAuthHeaders } from "@/lib/auth";
+import { apiClient } from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/lib/api-config";
 
 interface Invoice {
     id: string;
@@ -28,14 +29,8 @@ export default function BillingPortal() {
     useEffect(() => {
         const fetchBilling = async () => {
             try {
-                const headers = await getAuthHeaders();
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/billing`, {
-                    headers
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setInvoices(data);
-                }
+                const response = await apiClient.get<Invoice[]>(API_ENDPOINTS.adminBilling);
+                setInvoices(response.data);
             } catch (error) {
                 console.error("Failed to fetch billing", error);
             } finally {

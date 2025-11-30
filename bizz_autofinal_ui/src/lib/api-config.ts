@@ -13,5 +13,6 @@ export const API_ENDPOINTS = {
     sales_summary: '/api/accounting/sales_summary',
     expense_report: '/api/accounting/expense_report',
     stock_report: '/api/accounting/stock_report',
-  }
+  },
+  adminBilling: '/api/admin/billing',
 };
