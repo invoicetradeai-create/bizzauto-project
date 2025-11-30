@@ -9,6 +9,6 @@ echo "--- [DEBUG] Starting worker.py in the background... ---"
 python worker.py &
 
 echo "--- [DEBUG] Starting Uvicorn in the foreground... ---"
-uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}
+python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}
 
 echo "--- [DEBUG] This line should not be reached if Uvicorn starts correctly. ---"
