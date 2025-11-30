@@ -1,18 +1,22 @@
 from dotenv import load_dotenv
 import sys
 import os
-import json # Added for JSON parsing
-import time # Added for retry delay
-from google.oauth2 import service_account # Added for service account credentials
-from google.cloud import vision # Added for Vision API client initialization
-
-# Add the directory containing main.py (which is bizzauto_api) to sys.path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-load_dotenv() # Load environment variables from .env file
-
+import json
+import time
+from google.oauth2 import service_account
+from google.cloud import vision
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+import google.generativeai as genai
+from pydantic import BaseModel
+
+# Add the directory containing main.py to sys.path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+load_dotenv()
+
+# Import Routers
 import routers.dashboard as dashboard
 import routers.tables as tables
 import routers.api.companies as companies
@@ -34,13 +38,10 @@ import routers.api.ocr as ocr
 import routers.api.scheduled_messages as scheduled_messages
 import routers.api.inventory as inventory
 import routers.api.accounting as accounting
+import routers.admin as admin
 
 from database import engine, get_db, TestingSessionLocal, test_engine
 import sql_models
-import logging
-import google.generativeai as genai
-from pydantic import BaseModel
-
 
 app = FastAPI()
 
@@ -54,8 +55,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],            # allow GET, POST, PUT, DELETE, etc.
-    allow_headers=["*"],            # allow all headers (esp. Authorization)
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ✅ Create database tables on startup
@@ -63,8 +64,8 @@ app.add_middleware(
 async def startup_event():
     # Check if running in test environment
     if os.getenv("TESTING") == "True":
-        sql_models.Base.metadata.drop_all(bind=test_engine) # Need to import test_engine from database
-        sql_models.Base.metadata.create_all(bind=test_engine) # Need to import test_engine from database
+        sql_models.Base.metadata.drop_all(bind=test_engine)
+        sql_models.Base.metadata.create_all(bind=test_engine)
         logging.info("Test database tables created successfully")
     else:
         try:
@@ -75,29 +76,23 @@ async def startup_event():
 
     # Google Cloud Vision API Credentials Initialization
     try:
-        creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-        if not creds_json:
-            raise ValueError("Env var GOOGLE_APPLICATION_CREDENTIALS_JSON is not set")
-
-        # Convert JSON string to Python dict
-        creds_dict = json.loads(creds_json)
-
-        # Fix private_key line breaks
-        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-
-        # Write to temp file
-        with open("/tmp/sa.json", "w") as f:
-            json.dump(creds_dict, f)
-
-        # Set GOOGLE_APPLICATION_CREDENTIALS
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/sa.json"
-        logging.info("Google Cloud Vision API credentials configured from environment variable.")
+        if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            logging.info("Using GOOGLE_APPLICATION_CREDENTIALS from environment.")
+        else:
+            creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+            if not creds_json:
+                logging.warning("Env var GOOGLE_APPLICATION_CREDENTIALS_JSON is not set. OCR features may not work.")
+            else:
+                creds_dict = json.loads(creds_json)
+                creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+                with open("/tmp/sa.json", "w") as f:
+                    json.dump(creds_dict, f)
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/sa.json"
+                logging.info("Google Cloud Vision API credentials configured from environment variable.")
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         logging.error(f"Error configuring Google Cloud Vision API credentials: {e}")
 
     # Gemini API Key Configuration
-    # Make sure to set the GEMINI_API_KEY environment variable in your .env file
-    # or directly in your environment.
     try:
         api_key = os.environ["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
@@ -130,47 +125,31 @@ app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(whatsapp_logs.router, prefix="/api/whatsapp_logs", tags=["whatsapp_logs"])
 app.include_router(uploaded_docs.router, prefix="/api/uploaded_docs", tags=["uploaded_docs"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
-app.include_router(
-    meta_whatsapp.router,
-    prefix="/api/meta_whatsapp",
-    tags=["whatsapp"]
-)
+app.include_router(meta_whatsapp.router, prefix="/api/meta_whatsapp", tags=["whatsapp"])
 app.include_router(ocr.router, prefix="/api/ocr", tags=["ocr"])
 app.include_router(scheduled_messages.router, prefix="/api", tags=["scheduled_messages"])
 app.include_router(inventory.router, prefix="/api", tags=["inventory"])
 app.include_router(accounting.router, prefix="/api/accounting", tags=["accounting"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
-# ✅ Root endpoint (for testing)
+# ✅ Root endpoint
 @app.get("/")
 def read_root():
-    return {
-        "message": "BizzAuto API",
-        "version": "1.0.0",
-        "status": "running"
-    }
+    return {"message": "BizzAuto API", "version": "1.0.0", "status": "running"}
 
 # ✅ Health check endpoint
 @app.get("/health")
 def health_check():
-    return {
-        "status": "ok",
-        "message": "API is healthy",
-        "version": "1.0.0"
-    }
+    return {"status": "ok", "message": "API is healthy", "version": "1.0.0"}
 
-# Pydantic model for the request body
+# Pydantic model for Gemini
 class GeminiPrompt(BaseModel):
     prompt: str
 
-# Gemini model initialization
-# You can choose other models like 'gemini-pro-vision', 'gemini-1.0-pro', etc.
 gemini_model = genai.GenerativeModel('gemini-pro')
 
 @app.post("/gemini-generate")
 async def generate_with_gemini(prompt: GeminiPrompt):
-    """
-    Receives a prompt and returns a response generated by Gemini.
-    """
     try:
         response = gemini_model.generate_content(prompt.prompt)
         return {"response": response.text}
@@ -179,6 +158,6 @@ async def generate_with_gemini(prompt: GeminiPrompt):
 
 if __name__ == "__main__":
     import uvicorn
-    # app is already defined globally
-    port = int(os.getenv("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port, reload=False, log_level="debug")
+    # Default to port 8000 as requested
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="127.0.0.1", port=port, reload=False, log_level="debug")

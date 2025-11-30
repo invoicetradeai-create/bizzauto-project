@@ -15,7 +15,6 @@ const menuItems = [
   { name: "Invoices", icon: FileText, path: "/invoices" },
   { name: "Inventory", icon: Package, path: "/inventory" },
   { name: "Expense", icon: Receipt, path: "/expense" },
-  { name: "OCR Upload", icon: ScanLine, path: "/ocr" },
   { name: "WhatsApp", icon: MessageSquare, path: "/whatsapp" },
   { name: "Analytics", icon: BarChart3, path: "/analytics" },
   { name: "Accounting", icon: Receipt, path: "/accounting" }, // New item

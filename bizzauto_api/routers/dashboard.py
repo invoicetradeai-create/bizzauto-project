@@ -3,13 +3,13 @@ from sqlalchemy.orm import Session
 from database import get_db
 from crud import get_invoices, get_clients, get_products, get_whatsapp_logs
 from datetime import datetime
-from dependencies import get_current_user
+from dependencies import get_current_user, set_rls_context
 from sql_models import User
 
 router = APIRouter()
 
 @router.get("/summary")
-async def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_dashboard_summary(db: Session = Depends(set_rls_context), current_user: User = Depends(get_current_user)):
     company_id = current_user.company_id
     print(f"Dashboard Access - User: {current_user.id}, Company: {company_id}")
     

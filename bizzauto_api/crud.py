@@ -64,8 +64,8 @@ def get_products(db: Session, skip: int = 0, limit: int = 100, company_id: UUID 
         query = query.filter(Product.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_product(db: Session, product: PydanticProduct):
-    db_product = Product(**product.model_dump(exclude_none=True))
+def create_product(db: Session, product: PydanticProduct, user_id: UUID):
+    db_product = Product(**product.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
@@ -116,8 +116,8 @@ def get_clients(db: Session, skip: int = 0, limit: int = 100, company_id: UUID =
         query = query.filter(Client.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_client(db: Session, client: PydanticClient):
-    db_client = Client(**client.model_dump(exclude_none=True))
+def create_client(db: Session, client: PydanticClient, user_id: UUID):
+    db_client = Client(**client.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_client)
     db.commit()
     db.refresh(db_client)
@@ -174,8 +174,8 @@ def get_supplier(db: Session, supplier_id: UUID):
 def get_suppliers(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Supplier).offset(skip).limit(limit).all()
 
-def create_supplier(db: Session, supplier: PydanticSupplier):
-    db_supplier = Supplier(**supplier.model_dump(exclude_none=True))
+def create_supplier(db: Session, supplier: PydanticSupplier, user_id: UUID):
+    db_supplier = Supplier(**supplier.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_supplier)
     db.commit()
     db.refresh(db_supplier)
@@ -206,10 +206,10 @@ def get_invoices(db: Session, skip: int = 0, limit: int = 100, company_id: UUID 
         query = query.filter(Invoice.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID):
+def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID, user_id: UUID):
     # Extract items and create the main invoice object
     invoice_data = invoice.model_dump(exclude={'items', 'company_id'})
-    db_invoice = Invoice(**invoice_data, company_id=company_id)
+    db_invoice = Invoice(**invoice_data, company_id=company_id, user_id=user_id)
     db.add(db_invoice)
     db.commit() # Commit to get the db_invoice.id
     db.refresh(db_invoice)
@@ -218,7 +218,7 @@ def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID):
     # Now create the invoice items
     if invoice.items:
         for item_data in invoice.items:
-            db_item = InvoiceItem(**item_data.model_dump(), invoice_id=db_invoice.id)
+            db_item = InvoiceItem(**item_data.model_dump(), invoice_id=db_invoice.id, user_id=user_id)
             db.add(db_item)
             print(f"Creating invoice item for product ID: {db_item.product_id}")
     
@@ -256,6 +256,7 @@ def update_invoice(db: Session, invoice_id: UUID, invoice_data: PydanticInvoice)
                 new_item = InvoiceItem(
                     invoice_id=db_invoice.id,
                     product_id=item_data.product_id,
+                    user_id=db_invoice.user_id, # Inherit user_id from invoice
                     quantity=item_data.quantity,
                     price=item_data.price,
                     total=item_data.total
@@ -324,8 +325,8 @@ def get_purchase(db: Session, purchase_id: UUID):
 def get_purchases(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Purchase).offset(skip).limit(limit).all()
 
-def create_purchase(db: Session, purchase: PydanticPurchase):
-    db_purchase = Purchase(**purchase.model_dump(exclude_none=True))
+def create_purchase(db: Session, purchase: PydanticPurchase, user_id: UUID):
+    db_purchase = Purchase(**purchase.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_purchase)
     db.commit()
     db.refresh(db_purchase)
@@ -382,8 +383,8 @@ def get_expense(db: Session, expense_id: UUID):
 def get_expenses(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Expense).offset(skip).limit(limit).all()
 
-def create_expense(db: Session, expense: PydanticExpense):
-    db_expense = Expense(**expense.model_dump(exclude_none=True))
+def create_expense(db: Session, expense: PydanticExpense, user_id: UUID):
+    db_expense = Expense(**expense.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_expense)
     db.commit()
     db.refresh(db_expense)
@@ -411,8 +412,8 @@ def get_lead(db: Session, lead_id: UUID):
 def get_leads(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Lead).offset(skip).limit(limit).all()
 
-def create_lead(db: Session, lead: PydanticLead):
-    db_lead = Lead(**lead.model_dump(exclude_none=True))
+def create_lead(db: Session, lead: PydanticLead, user_id: UUID):
+    db_lead = Lead(**lead.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_lead)
     db.commit()
     db.refresh(db_lead)
@@ -443,8 +444,8 @@ def get_whatsapp_logs(db: Session, skip: int = 0, limit: int = 100, company_id: 
         query = query.filter(WhatsappLog.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_whatsapp_log(db: Session, whatsapp_log: PydanticWhatsappLog):
-    db_whatsapp_log = WhatsappLog(**whatsapp_log.model_dump(exclude_none=True))
+def create_whatsapp_log(db: Session, whatsapp_log: PydanticWhatsappLog, user_id: UUID):
+    db_whatsapp_log = WhatsappLog(**whatsapp_log.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_whatsapp_log)
     db.commit()
     db.refresh(db_whatsapp_log)
@@ -490,8 +491,8 @@ def get_scheduled_whatsapp_messages(db: Session, skip: int = 0, limit: int = 100
 def get_pending_scheduled_whatsapp_messages(db: Session):
     return db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.status == 'pending', ScheduledWhatsappMessage.scheduled_at <= datetime.utcnow()).all()
 
-def create_scheduled_whatsapp_message(db: Session, scheduled_message: PydanticScheduledWhatsappMessage):
-    db_message = ScheduledWhatsappMessage(**scheduled_message.model_dump())
+def create_scheduled_whatsapp_message(db: Session, scheduled_message: PydanticScheduledWhatsappMessage, user_id: UUID):
+    db_message = ScheduledWhatsappMessage(**scheduled_message.model_dump(), user_id=user_id)
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
@@ -514,8 +515,8 @@ def get_uploaded_doc(db: Session, uploaded_doc_id: UUID):
 def get_uploaded_docs(db: Session, skip: int = 0, limit: int = 100):
     return db.query(UploadedDoc).offset(skip).limit(limit).all()
 
-def create_uploaded_doc(db: Session, uploaded_doc: PydanticUploadedDoc):
-    db_uploaded_doc = UploadedDoc(**uploaded_doc.model_dump(exclude_none=True))
+def create_uploaded_doc(db: Session, uploaded_doc: PydanticUploadedDoc, user_id: UUID):
+    db_uploaded_doc = UploadedDoc(**uploaded_doc.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_uploaded_doc)
     db.commit()
     db.refresh(db_uploaded_doc)

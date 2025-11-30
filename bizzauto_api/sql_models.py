@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Float, Integer, ForeignKey, Date, DateTime
+from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -35,6 +36,7 @@ class Product(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     name = Column(String, index=True)
     sku = Column(String, nullable=True)
     category = Column(String, nullable=True)
@@ -54,6 +56,7 @@ class Client(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     name = Column(String, index=True)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
@@ -75,6 +78,7 @@ class User(Base):
     location = Column(String, nullable=True)
     contact_number = Column(String, nullable=True)
     status = Column(String, default='active')
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     company = relationship("Company", back_populates="users")
     settings = relationship("Setting", back_populates="user")
@@ -84,6 +88,7 @@ class Supplier(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     name = Column(String, index=True)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
@@ -97,6 +102,7 @@ class Invoice(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True)
     invoice_date = Column(Date)
     total_amount = Column(Float, default=0)
@@ -118,6 +124,7 @@ class InvoiceItem(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"))
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     quantity = Column(Integer, default=1)
     price = Column(Float, default=0)
     total = Column(Float, default=0)
@@ -130,6 +137,7 @@ class Purchase(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     supplier_id = Column(UUID(as_uuid=True), ForeignKey("suppliers.id"), nullable=True)
     purchase_date = Column(Date)
     total_amount = Column(Float, default=0)
@@ -150,6 +158,7 @@ class PurchaseItem(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     purchase_id = Column(UUID(as_uuid=True), ForeignKey("purchases.id"))
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     quantity = Column(Integer, default=1)
     price = Column(Float, default=0)
     total = Column(Float, default=0)
@@ -162,6 +171,7 @@ class Expense(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     title = Column(String, index=True)
     category = Column(String, nullable=True)
     amount = Column(Float, default=0)
@@ -178,6 +188,7 @@ class Lead(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     name = Column(String, index=True)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
@@ -190,6 +201,7 @@ class WhatsappLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     message_type = Column(String, nullable=True)
     whatsapp_message_id = Column(String, nullable=True, unique=True) # Added this line
     phone = Column(String, nullable=True)
@@ -203,6 +215,7 @@ class ScheduledWhatsappMessage(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     phone = Column(String, nullable=False)
     message = Column(String, nullable=False)
     scheduled_at = Column(DateTime, nullable=False)
@@ -215,6 +228,7 @@ class UploadedDoc(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     file_name = Column(String)
     file_url = Column(String)
 
@@ -225,6 +239,7 @@ class Account(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     name = Column(String, index=True)
     type = Column(String, index=True)  # e.g., Asset, Liability, Equity, Revenue, Expense
     balance = Column(Float, default=0)
@@ -237,6 +252,7 @@ class JournalEntry(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id"))
     invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True)
     purchase_id = Column(UUID(as_uuid=True), ForeignKey("purchases.id"), nullable=True)

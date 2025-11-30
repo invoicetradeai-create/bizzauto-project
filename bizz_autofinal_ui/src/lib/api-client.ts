@@ -10,12 +10,12 @@ const apiClient = axios.create({
   },
 });
 
-apiClient.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const userId = localStorage.getItem("user_id");
-    if (userId) {
-      config.headers["X-User-Id"] = userId;
-    }
+import { supabase } from "@/lib/supabaseClient";
+
+apiClient.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers["Authorization"] = `Bearer ${session.access_token}`;
   }
   return config;
 });

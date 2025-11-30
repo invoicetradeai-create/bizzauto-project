@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Json, ConfigDict, field_serializer
+from pydantic import BaseModel, Json, ConfigDict, field_serializer, Field
 from typing import Optional, List, Any
 from uuid import UUID
 from datetime import datetime, date
@@ -161,9 +161,11 @@ class ScheduledWhatsappMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ScheduledWhatsappMessageCreate(BaseModel):
-    phone: str
+    phone: str = Field(alias="phone_number")
     message: str
-    scheduled_at: datetime
+    scheduled_at: Optional[datetime] = Field(None, alias="scheduled_time")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 class UploadedDoc(BaseModel):
     id: Optional[UUID] = None

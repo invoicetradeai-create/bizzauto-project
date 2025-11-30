@@ -18,9 +18,10 @@ def sanitize_phone_number(phone: str) -> str:
 # =================================
 # 2. SEND AUTO REPLY (WHATSAPP CLOUD API)
 # =================================
-async def send_reply(to: str, message: str) -> Optional[Dict[str, Any]]:
+async def send_reply(to: str, data: Any) -> Optional[Dict[str, Any]]:
     """
-    Sends a simple text message using the WhatsApp Cloud API.
+    Sends a message using the WhatsApp Cloud API.
+    Can be a simple text message (if data is a string) or a complex one like a template (if data is a dict).
     """
     access_token = os.environ.get("WHATSAPP_TOKEN")
     phone_number_id = os.environ.get("PHONE_NUMBER_ID")
@@ -30,9 +31,7 @@ async def send_reply(to: str, message: str) -> Optional[Dict[str, Any]]:
         print("Error: WhatsApp environment variables not set.")
         return None
 
-    # --- FIX: CLEAN THE NUMBER BEFORE SENDING ---
     clean_to = sanitize_phone_number(to)
-    # --------------------------------------------
 
     url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
     
@@ -43,14 +42,20 @@ async def send_reply(to: str, message: str) -> Optional[Dict[str, Any]]:
     
     payload = {
         "messaging_product": "whatsapp",
-        "to": clean_to, # Use the cleaned number
-        "type": "text",
-        "text": {"body": message},
+        "to": clean_to,
     }
+
+    if isinstance(data, str):
+        payload["type"] = "text"
+        payload["text"] = {"body": data}
+    elif isinstance(data, dict):
+        payload.update(data)
+    else:
+        print("Error: Invalid data type for send_reply. Must be str or dict.")
+        return None
 
     async with httpx.AsyncClient() as client:
         try:
-            # Increased timeout to 10s just in case Meta is slow
             response = await client.post(url, headers=headers, json=payload, timeout=10.0)
             response.raise_for_status()
             response_json = response.json()
