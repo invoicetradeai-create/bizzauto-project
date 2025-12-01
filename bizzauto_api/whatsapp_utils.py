@@ -25,7 +25,7 @@ async def send_reply(to: str, data: Any) -> Optional[Dict[str, Any]]:
     """
     access_token = os.environ.get("WHATSAPP_TOKEN")
     phone_number_id = os.environ.get("PHONE_NUMBER_ID")
-    api_version = "v24.0"
+    api_version = "v19.0"
 
     if not access_token or not phone_number_id:
         print("Error: WhatsApp environment variables not set.")

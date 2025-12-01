@@ -70,7 +70,7 @@ tools_list = [get_product_details]
 # Initialize Model
 # NOTE: If 'gemini-1.5-flash' still gives 404 after pip install, change to 'gemini-pro'
 model = genai.GenerativeModel(
-    model_name='gemini-2.5-flash', 
+    model_name='gemini-pro', 
     system_instruction=system_instructions,
     tools=tools_list
 )

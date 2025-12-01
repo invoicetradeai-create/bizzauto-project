@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { apiClient } from "@/lib/api-client";
-import { UUID } from "crypto";
+
+type UUID = string;
 
 // Define types for the settings values
 type ProfileSettings = {
@@ -49,15 +50,15 @@ type UserType = {
   email: string;
 };
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { theme, toggleTheme, mounted } = useTheme();
-  
+
   const initialTab = searchParams.get("tab");
   // Capitalize the first letter if it exists, otherwise default to "Profile"
-  const defaultTab = initialTab 
-    ? initialTab.charAt(0).toUpperCase() + initialTab.slice(1) 
+  const defaultTab = initialTab
+    ? initialTab.charAt(0).toUpperCase() + initialTab.slice(1)
     : "Profile";
 
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -98,7 +99,7 @@ export default function SettingsPage() {
         // 1. Fetch users to get a valid user ID
         const usersRes = await apiClient.get<UserType[]>('/api/users');
         const users = usersRes.data;
-        
+
         if (!users || users.length === 0) {
           throw new Error("No users found. Cannot manage settings.");
         }
@@ -110,14 +111,14 @@ export default function SettingsPage() {
         if (settingsRes.data) {
           const newSettings: Record<string, any> = {};
           const newSettingsMap: Record<string, UUID> = {};
-          
+
           // 3. Filter settings for the current user and parse the value
           const userSettings = settingsRes.data.filter(s => s.user_id === currentUserId);
           userSettings.forEach(setting => {
             try {
               // The 'value' from the DB might be a stringified JSON, so we parse it.
-              newSettings[setting.key] = typeof setting.value === 'string' 
-                ? JSON.parse(setting.value) 
+              newSettings[setting.key] = typeof setting.value === 'string'
+                ? JSON.parse(setting.value)
                 : setting.value;
             } catch (e) {
               console.error(`Failed to parse setting value for key: ${setting.key}`, e);
@@ -205,7 +206,7 @@ export default function SettingsPage() {
           <p className="text-muted-foreground mb-6">Manage your account settings and preferences</p>
 
           <div className="flex flex-wrap gap-3 mb-6">
-            {["Profile", "Notifications", "Integrations"].map((tab) => (
+            {["Profile", "Notifications", "Integrations", "Alerts"].map((tab) => (
               <button key={tab} onClick={() => handleTabClick(tab)} className={`px-4 py-2 rounded-full text-sm font-medium shadow transition-colors ${activeTab === tab ? "bg-blue-600 text-white" : "bg-card hover:bg-muted"}`}>
                 {tab}
               </button>
@@ -239,22 +240,22 @@ export default function SettingsPage() {
                   <h2 className="text-lg font-semibold mb-4">Notification Preferences</h2>
                   <div className="space-y-4">
                     {(Object.keys(settings.notifications) as Array<keyof NotificationSettings>).map((key) => (
-                       <div key={key} className="flex items-center justify-between border-b py-2 text-sm">
-                         <span className="capitalize">{key.replace(/([A-Z])/g, ' ')}</span>
-                         <button onClick={() => handleSettingChange('notifications', key, !settings.notifications[key])} className={`relative w-12 h-6 rounded-full transition-colors ${settings.notifications[key] ? "bg-primary" : "bg-muted"}`}>
-                           <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${settings.notifications[key] ? "translate-x-6" : ""}`}></span>
-                         </button>
-                       </div>
+                      <div key={key} className="flex items-center justify-between border-b py-2 text-sm">
+                        <span className="capitalize">{key.replace(/([A-Z])/g, ' ')}</span>
+                        <button onClick={() => handleSettingChange('notifications', key, !settings.notifications[key])} className={`relative w-12 h-6 rounded-full transition-colors ${settings.notifications[key] ? "bg-primary" : "bg-muted"}`}>
+                          <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${settings.notifications[key] ? "translate-x-6" : ""}`}></span>
+                        </button>
+                      </div>
                     ))}
                   </div>
-                   <div className="mt-8 flex justify-end">
+                  <div className="mt-8 flex justify-end">
                     <Button onClick={() => handleSave('notifications')}>Save Preferences</Button>
                   </div>
                 </div>
               )}
 
               {activeTab === "Integrations" && (
-                 <div className="bg-card border rounded-lg p-6">
+                <div className="bg-card border rounded-lg p-6">
                   <h2 className="text-lg font-semibold mb-4">API Integrations</h2>
                   <div className="space-y-6">
                     {(Object.keys(settings.integrations) as Array<keyof IntegrationSettings>).map((key) => (
@@ -274,7 +275,7 @@ export default function SettingsPage() {
               )}
 
               {activeTab === "Alerts" && (
-                 <div className="bg-card border rounded-lg p-6">
+                <div className="bg-card border rounded-lg p-6">
                   <h2 className="text-lg font-semibold mb-4">Alert Settings</h2>
                   <div className="space-y-6">
                     <div>
@@ -295,5 +296,13 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>Loading settings...</div>}>
+      <SettingsContent />
+    </Suspense>
   );
 }

@@ -8,13 +8,17 @@ import traceback
 from fastapi import APIRouter, HTTPException, Request, Depends, Response, status
 from sqlalchemy.orm import Session
 from database import SessionLocal, get_db
-from crud import create_whatsapp_log, get_companies, get_whatsapp_logs, update_whatsapp_log, get_whatsapp_log_by_whatsapp_message_id
+from crud import create_whatsapp_log, get_companies, get_whatsapp_logs, update_whatsapp_log, get_whatsapp_log_by_whatsapp_message_id, create_scheduled_whatsapp_message
 from models import WhatsappLog as PydanticWhatsappLog
+from models import ScheduledWhatsappMessage as PydanticScheduledWhatsappMessage
+from sql_models import User
 from ocr_tasks import process_invoice_image_gcp
 from whatsapp_utils import send_reply
 from whatsapp_agent import run_whatsapp_agent
 from pydantic import BaseModel
 from typing import Any
+from datetime import datetime
+from dependencies import get_current_user
 
 router = APIRouter()
 
@@ -22,7 +26,7 @@ router = APIRouter()
 ACCESS_TOKEN = os.environ.get("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN")
-API_VERSION = "v24.0"
+API_VERSION = "v19.0"
 
 # -----------------------------
 # Background processing
@@ -128,16 +132,40 @@ def verify_webhook(request: Request):
         raise HTTPException(status_code=403, detail="Webhook verification failed.")
 
 # -----------------------------
-
+# Send Message Endpoint
+# -----------------------------
 class SendMessageRequest(BaseModel):
     to: str
     message_data: Any
 
 @router.post("/send-meta-whatsapp")
-async def send_meta_whatsapp_message(request: SendMessageRequest, response: Response, db: Session = Depends(get_db)):
+async def send_meta_whatsapp_message(
+    request: SendMessageRequest, 
+    response: Response, 
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
     try:
+        # 1. Send Message via Meta API
         api_response = await send_reply(to=request.to, data=request.message_data)
+        
         if api_response and "messages" in api_response:
+            # 2. Save to Database (so it shows in the table)
+            try:
+                message_body = request.message_data.get("text", {}).get("body", "") if isinstance(request.message_data, dict) else str(request.message_data)
+                
+                new_message = PydanticScheduledWhatsappMessage(
+                    company_id=user.company_id,
+                    phone=request.to,
+                    message=message_body,
+                    scheduled_at=datetime.utcnow(),
+                    status='sent'
+                )
+                create_scheduled_whatsapp_message(db, new_message, user.id)
+                print(f"✅ Immediate message saved to DB for {request.to}")
+            except Exception as db_e:
+                print(f"⚠️ Failed to save immediate message to DB: {db_e}")
+
             return {"success": True}
         else:
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

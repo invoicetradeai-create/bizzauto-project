@@ -161,9 +161,9 @@ class ScheduledWhatsappMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ScheduledWhatsappMessageCreate(BaseModel):
-    phone: str = Field(alias="phone_number")
+    phone: str
     message: str
-    scheduled_at: Optional[datetime] = Field(None, alias="scheduled_time")
+    scheduled_at: Optional[datetime] = None
 
     model_config = ConfigDict(populate_by_name=True)
 

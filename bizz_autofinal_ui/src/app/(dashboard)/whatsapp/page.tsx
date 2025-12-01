@@ -85,6 +85,7 @@ export default function WhatsappPage() {
       setSendSuccess('Message sent successfully!');
       setTo('');
       setBody('');
+      fetchScheduledMessages();
     } catch (err: any) {
       setSendError(`An error occurred: ${err.response?.data?.detail || err.message}`);
       console.error("Error sending message:", err);
@@ -107,7 +108,7 @@ export default function WhatsappPage() {
         scheduled_at,
       };
       const response = await apiClient.post(API_ENDPOINTS.scheduledWhatsappMessages, payload);
-      setScheduleSuccess('Message scheduled successfully!');
+      setScheduleSuccess('Message sent successfully');
       setScheduleTo('');
       setScheduleBody('');
       setScheduleDateTime('');
@@ -224,8 +225,24 @@ export default function WhatsappPage() {
                 <Button type="submit" disabled={isScheduling} className="w-full bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 flex items-center justify-center">
                   {isScheduling ? 'Scheduling...' : 'Schedule Message'}
                 </Button>
+
                 {scheduleSuccess && <p className="text-green-600 text-sm mt-2">{scheduleSuccess}</p>}
-                {scheduleError && <p className="text-red-600 text-sm mt-2">{scheduleError}</p>}
+
+                {scheduleError && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-start animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">Error</h3>
+                      <div className="mt-1 text-sm text-red-700">
+                        <p>{scheduleError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </form>
             </div>
           </div>
@@ -254,7 +271,9 @@ export default function WhatsappPage() {
                         <tr key={msg.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">{msg.phone}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground truncate max-w-xs">{msg.message}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{new Date(msg.scheduled_at).toLocaleString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                            {new Date(msg.scheduled_at.endsWith('Z') ? msg.scheduled_at : msg.scheduled_at + 'Z').toLocaleString()}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${msg.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               msg.status === 'sent' ? 'bg-green-100 text-green-800' :

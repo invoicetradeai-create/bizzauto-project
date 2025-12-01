@@ -492,11 +492,22 @@ def get_pending_scheduled_whatsapp_messages(db: Session):
     return db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.status == 'pending', ScheduledWhatsappMessage.scheduled_at <= datetime.utcnow()).all()
 
 def create_scheduled_whatsapp_message(db: Session, scheduled_message: PydanticScheduledWhatsappMessage, user_id: UUID):
-    db_message = ScheduledWhatsappMessage(**scheduled_message.model_dump(), user_id=user_id)
+    print(f"Creating scheduled message for user {user_id}")
+    # Exclude 'id' to let the database generate it, and 'status' if it's default
+    message_data = scheduled_message.model_dump(exclude={'id'}, exclude_none=True)
+    print(f"Message data to insert: {message_data}")
+    
+    db_message = ScheduledWhatsappMessage(**message_data, user_id=user_id)
     db.add(db_message)
-    db.commit()
-    db.refresh(db_message)
-    return db_message
+    try:
+        db.commit()
+        db.refresh(db_message)
+        print(f"Successfully created scheduled message with ID: {db_message.id}")
+        return db_message
+    except Exception as e:
+        db.rollback()
+        print(f"Error creating scheduled message: {e}")
+        raise
 
 def update_scheduled_whatsapp_message(db: Session, message_id: UUID, scheduled_message: PydanticScheduledWhatsappMessage):
     db_message = db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.id == message_id).first()
