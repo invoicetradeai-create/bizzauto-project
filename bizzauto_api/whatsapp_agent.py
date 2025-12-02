@@ -5,6 +5,7 @@ from database import SessionLocal
 import crud
 from uuid import UUID
 import json
+import traceback # Import traceback for detailed error logging
 
 # ============================
 # 1. Product Lookup Tool
@@ -20,7 +21,11 @@ def get_product_details(
     db = SessionLocal()
     try:
         if product_id:
-            product = crud.get_product(db, product_id=UUID(int=product_id))
+            # Ensure product_id is correctly converted if coming from a non-UUID source
+            try:
+                product = crud.get_product(db, product_id=UUID(str(product_id)))
+            except ValueError:
+                return {"error": "Invalid product_id format"}
         elif product_name:
             product = crud.get_product_by_name(db, name=product_name)
         else:
@@ -41,6 +46,8 @@ def get_product_details(
         }
 
     except Exception as e:
+        print(f"ERROR in get_product_details: {e}")
+        traceback.print_exc() # Add full traceback
         return {"error": f"Error fetching product: {str(e)}"}
 
     finally:
@@ -97,11 +104,13 @@ async def run_whatsapp_agent(message: str, phone_number: str) -> str:
         # This fixes the "await" error while keeping the server responsive
         response = await asyncio.to_thread(chat.send_message, message)
         
-        return response.text
+        # Ensure that response.text is always a string, even if empty or None
+        return response.text if response and response.text is not None else ""
 
     except Exception as e:
         # Log the actual error for debugging
-        print(f"ERROR inside run_whatsapp_agent: {e}")
+        print(f"ERROR inside run_whatsapp_agent for phone {phone_number}: {e}")
+        traceback.print_exc() # Add full traceback
         
         # If the model name is wrong, catch it here
         if "404" in str(e) and "models/" in str(e):

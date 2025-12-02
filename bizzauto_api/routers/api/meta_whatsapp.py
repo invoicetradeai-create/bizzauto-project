@@ -95,6 +95,7 @@ async def process_whatsapp_message(entry_data: dict):
                                     create_whatsapp_log(db, incoming_log, user_id=user_id_for_log)
                                 except Exception as e:
                                     print(f"❌ Failed to log incoming message: {e}")
+                                    traceback.print_exc() # Add full traceback for detailed debugging
                             finally:
                                 db.close()
 
@@ -108,7 +109,7 @@ async def process_whatsapp_message(entry_data: dict):
                                 continue
 
                             # --- 4. Send Reply (No DB Connection Held) ---
-                            send_result = await send_reply(to=sender_phone, data=reply)
+                            send_result = await send_reply(to=sender_phone, data=reply) # FIX APPLIED HERE
 
                             whatsapp_message_id_for_log = None
                             if send_result and "messages" in send_result and len(send_result["messages"]) > 0:
@@ -129,11 +130,12 @@ async def process_whatsapp_message(entry_data: dict):
                                 create_whatsapp_log(db, new_log, user_id=user_id_for_log)
                             except Exception as e:
                                 print(f"❌ Failed to log outgoing message: {e}")
+                                traceback.print_exc() # Add full traceback for detailed debugging
                             finally:
                                 db.close()
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Error in process_whatsapp_message: {e}") # More specific error message
         traceback.print_exc()
     
     print("✅ BACKGROUND TASK FINISHED")
@@ -187,13 +189,16 @@ async def send_meta_whatsapp_message(
                 print(f"✅ Immediate message saved to DB for {request.to}")
             except Exception as db_e:
                 print(f"⚠️ Failed to save immediate message to DB: {db_e}")
-
+                traceback.print_exc() # Add full traceback
             return {"success": True}
         else:
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            print(f"❌ Failed to send message via Meta API: {api_response}") # Log API response
             return {"error": "Failed to send message"}
     except Exception as e:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        print(f"❌ Error in send_meta_whatsapp_message: {e}") # Log actual error
+        traceback.print_exc() # Add full traceback
         return {"error": str(e)}
 
 
@@ -210,6 +215,7 @@ async def receive_webhook(request: Request):
         return {"status": "received"}
     except Exception as e:
         print(f"❌ Error in POST /webhook: {e}")
+        traceback.print_exc() # Add full traceback
         return {"status": "error", "message": str(e)}
     
 @router.get("/test")
