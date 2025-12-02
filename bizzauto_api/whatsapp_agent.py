@@ -77,7 +77,7 @@ tools_list = [get_product_details]
 # Initialize Model
 # NOTE: If 'gemini-1.5-flash' still gives 404 after pip install, change to 'gemini-pro'
 model = genai.GenerativeModel(
-    model_name='gemini-pro', 
+    model_name='gemini-1.0-pro', # Changed model name to gemini-1.0-pro for testing
     system_instruction=system_instructions,
     tools=tools_list
 )
@@ -114,6 +114,8 @@ async def run_whatsapp_agent(message: str, phone_number: str) -> str:
         
         # If the model name is wrong, catch it here
         if "404" in str(e) and "models/" in str(e):
-            return "System Error: AI Model version mismatch. Please contact admin."
+            available_models = [m.name for m in genai.list_models()]
+            print(f"DEBUG: Available models: {', '.join(available_models)}")
+            return "System Error: AI Model (gemini-1.0-pro) not found or API key invalid. Please contact admin and check logs for available models."
             
         return "Sorry, I'm having trouble connecting to the system right now. 🔧"

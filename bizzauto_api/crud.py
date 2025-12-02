@@ -444,8 +444,8 @@ def get_whatsapp_logs(db: Session, user_id: UUID, skip: int = 0, limit: int = 10
         query = query.filter(WhatsappLog.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_whatsapp_log(db: Session, whatsapp_log: PydanticWhatsappLog, user_id: UUID | None = None):
-    db_whatsapp_log = WhatsappLog(**whatsapp_log.model_dump(exclude_none=True), user_id=user_id)
+def create_whatsapp_log(db: Session, whatsapp_log: PydanticWhatsappLog):
+    db_whatsapp_log = WhatsappLog(**whatsapp_log.model_dump(exclude_none=True))
     db.add(db_whatsapp_log)
     db.commit()
     db.refresh(db_whatsapp_log)

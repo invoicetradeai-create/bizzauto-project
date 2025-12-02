@@ -92,7 +92,7 @@ async def process_whatsapp_message(entry_data: dict):
                                         message=incoming_text,
                                         status="received"
                                     )
-                                    create_whatsapp_log(db, incoming_log, user_id=user_id_for_log)
+                                    create_whatsapp_log(db, incoming_log)
                                 except Exception as e:
                                     print(f"❌ Failed to log incoming message: {e}")
                                     traceback.print_exc() # Add full traceback for detailed debugging
@@ -127,7 +127,7 @@ async def process_whatsapp_message(entry_data: dict):
                                     message=reply,
                                     status="sent"
                                 )
-                                create_whatsapp_log(db, new_log, user_id=user_id_for_log)
+                                create_whatsapp_log(db, new_log)
                             except Exception as e:
                                 print(f"❌ Failed to log outgoing message: {e}")
                                 traceback.print_exc() # Add full traceback for detailed debugging
