@@ -1,7 +1,7 @@
 import requests
 import json
 
-url = "http://127.0.0.1:8000/api/meta_whatsapp/webhook"
+url = "https://bizzauto-project.onrender.com/api/meta_whatsapp/webhook"
 
 payload = {
   "object": "whatsapp_business_account",

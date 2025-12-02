@@ -14,8 +14,8 @@ from sql_models import User
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticSupplier])
-def read_suppliers(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context)):
-    suppliers = get_suppliers(db, skip=skip, limit=limit)
+def read_suppliers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    suppliers = get_suppliers(db, user_id=user.id, skip=skip, limit=limit)
     return suppliers
 
 @router.get("/{supplier_id}", response_model=PydanticSupplier)

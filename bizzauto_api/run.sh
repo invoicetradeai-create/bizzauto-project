@@ -5,9 +5,6 @@ exec > >(tee /dev/stdout) 2> >(tee /dev/stderr >&2)
 
 echo "--- [DEBUG] run.sh script has started ---"
 
-echo "--- [DEBUG] Starting worker.py in the background... ---"
-python worker.py &
-
 echo "--- [DEBUG] Starting Uvicorn in the foreground... ---"
 python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}
 

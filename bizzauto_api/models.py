@@ -142,8 +142,9 @@ class Lead(BaseModel):
 class WhatsappLog(BaseModel):
     id: Optional[UUID] = None
     company_id: UUID
+    user_id: UUID  # Added this line
     message_type: Optional[str] = None
-    whatsapp_message_id: Optional[str] = None # Added this line
+    whatsapp_message_id: Optional[str] = None
     phone: Optional[str] = None
     message: Optional[str] = None
     status: Optional[str] = 'sent'

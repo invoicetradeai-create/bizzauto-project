@@ -11,7 +11,7 @@ import logging
 import google.generativeai as genai
 from pydantic import BaseModel
 import threading
-from worker import run_scheduler_loop
+
 
 # Add the directory containing main.py to sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -53,7 +53,6 @@ origins = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "*",
 ]
 
 # ✅ Add CORS middleware
@@ -106,13 +105,6 @@ async def startup_event():
     except KeyError:
         logging.error("GEMINI_API_KEY environment variable not set.")
 
-    # ✅ Start Scheduler Worker in Background
-    try:
-        scheduler_thread = threading.Thread(target=run_scheduler_loop, daemon=True)
-        scheduler_thread.start()
-        logging.info("Scheduler worker thread started successfully.")
-    except Exception as e:
-        logging.error(f"Failed to start scheduler worker: {e}")
 
 # Dependency override for testing
 def override_get_db():

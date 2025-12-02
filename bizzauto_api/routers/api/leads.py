@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
+from database import get_db
 from models import Lead as PydanticLead
 from crud import (
     get_lead, get_leads, create_lead, update_lead, delete_lead
@@ -13,8 +14,8 @@ from sql_models import User
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticLead])
-def read_leads(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context)):
-    leads = get_leads(db, skip=skip, limit=limit)
+def read_leads(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    leads = get_leads(db, user_id=user.id, skip=skip, limit=limit)
     return leads
 
 @router.get("/{lead_id}", response_model=PydanticLead)

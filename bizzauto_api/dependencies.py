@@ -17,11 +17,15 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
     token = credentials.credentials
     
     try:
-        # Verify JWT
+    # Verify JWT
         # print(f"DEBUG: Verifying token: {token[:10]}...")
         # print(f"DEBUG: Secret: {SUPABASE_JWT_SECRET[:5]}...")
         
-        payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=[ALGORITHM], options={"verify_aud": False})
+        if not SUPABASE_JWT_SECRET:
+            print("CRITICAL: SUPABASE_JWT_SECRET is not set in environment variables.")
+            raise HTTPException(status_code=500, detail="Server misconfiguration: Missing JWT Secret")
+
+        payload = jwt.decode(token, str(SUPABASE_JWT_SECRET), algorithms=[ALGORITHM], options={"verify_aud": False})
         print(f"DEBUG: JWT Payload: {payload}")
         
         # Extract user_id and company_id

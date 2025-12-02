@@ -8,12 +8,14 @@ from models import PurchaseItem as PydanticPurchaseItem
 from crud import (
     get_purchase_item, get_purchase_items, create_purchase_item, update_purchase_item, delete_purchase_item
 )
+from dependencies import get_current_user
+from sql_models import User
 
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticPurchaseItem])
-def read_purchase_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    purchase_items = get_purchase_items(db, skip=skip, limit=limit)
+def read_purchase_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    purchase_items = get_purchase_items(db, user_id=user.id, skip=skip, limit=limit)
     return purchase_items
 
 @router.get("/{purchase_item_id}", response_model=PydanticPurchaseItem)

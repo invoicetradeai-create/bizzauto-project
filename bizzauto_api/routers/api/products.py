@@ -14,8 +14,8 @@ from sql_models import User
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticProduct])
-def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context)):
-    products = get_products(db, skip=skip, limit=limit)
+def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    products = get_products(db, user_id=user.id, skip=skip, limit=limit)
     return products
 
 @router.get("/{product_id}", response_model=PydanticProduct)

@@ -14,8 +14,8 @@ from sql_models import User
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticUploadedDoc])
-def read_uploaded_docs(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context)):
-    uploaded_docs = get_uploaded_docs(db, skip=skip, limit=limit)
+def read_uploaded_docs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    uploaded_docs = get_uploaded_docs(db, user_id=user.id, skip=skip, limit=limit)
     return uploaded_docs
 
 @router.get("/{uploaded_doc_id}", response_model=PydanticUploadedDoc)

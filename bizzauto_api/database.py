@@ -2,6 +2,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -12,7 +13,14 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable not set.")
 
-engine = create_engine(DATABASE_URL)
+# Use NullPool to disable client-side pooling.
+# This is critical when using Supabase's Transaction Pooler (port 6543 or pooler.supabase.com)
+# to prevent "MaxClientsInSessionMode" errors.
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    poolclass=NullPool
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

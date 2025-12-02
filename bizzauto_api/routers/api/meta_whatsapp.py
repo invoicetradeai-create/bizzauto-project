@@ -36,8 +36,6 @@ async def process_whatsapp_message(entry_data: dict):
     print("🚀 BACKGROUND TASK STARTED")
     print("=" * 60)
     
-    db = SessionLocal()
-    
     try:
         # Log the entire payload
         print(f"📋 Entry data keys: {entry_data.keys()}")
@@ -58,63 +56,87 @@ async def process_whatsapp_message(entry_data: dict):
                             if not incoming_text:
                                 continue
 
-                            # --- 1. Log INCOMING Message ---
-                            # Get or create company for logging
-                            companies = get_companies(db)
-                            company_id_for_log = companies[0].id if companies else None
+                            # --- 1. Look up user context & Log INCOMING (Short DB Session) ---
+                            user_id_for_log = None
+                            company_id_for_log = None
                             
-                            if not company_id_for_log:
-                                # Create a default company if none exists
-                                from crud import create_company
-                                from models import Company as PydanticCompany
-                                default_company = create_company(db, PydanticCompany(name="Default Company", email="admin@bizzauto.com"))
-                                company_id_for_log = default_company.id
-
+                            db = SessionLocal()
                             try:
-                                incoming_log = PydanticWhatsappLog(
-                                    company_id=company_id_for_log,
-                                    message_type="text",
-                                    whatsapp_message_id=message_id,
-                                    phone=sender_phone,
-                                    message=incoming_text,
-                                    status="received"
-                                )
-                                create_whatsapp_log(db, incoming_log)
-                            except Exception as e:
-                                print(f"❌ Failed to log incoming message: {e}")
+                                from sql_models import Client
+                                from whatsapp_utils import sanitize_phone_number
                                 
-                            # --- 2. Run Agent ---
+                                sanitized_phone = sanitize_phone_number(sender_phone)
+                                client = db.query(Client).filter(Client.phone == sanitized_phone).first()
+
+                                if not client:
+                                    print(f"⚠️  No client found for phone number: {sender_phone}. Ignoring message.")
+                                    continue
+
+                                user_id_for_log = client.user_id
+                                company_id_for_log = client.company_id
+                                
+                                if not user_id_for_log or not company_id_for_log:
+                                    print(f"⚠️  Client {client.id} is missing user_id or company_id. Ignoring message.")
+                                    continue
+                                    
+                                print(f"✅ Found context: User ID {user_id_for_log}, Company ID {company_id_for_log}")
+
+                                # Log INCOMING Message
+                                try:
+                                    incoming_log = PydanticWhatsappLog(
+                                        company_id=company_id_for_log,
+                                        user_id=user_id_for_log,
+                                        message_type="text",
+                                        whatsapp_message_id=message_id,
+                                        phone=sender_phone,
+                                        message=incoming_text,
+                                        status="received"
+                                    )
+                                    create_whatsapp_log(db, incoming_log, user_id=user_id_for_log)
+                                except Exception as e:
+                                    print(f"❌ Failed to log incoming message: {e}")
+                            finally:
+                                db.close()
+
+                            if not user_id_for_log:
+                                continue
+                                
+                            # --- 3. Run Agent (No DB Connection Held) ---
                             reply = await run_whatsapp_agent(incoming_text, sender_phone)
                             
                             if not reply:
                                 continue
 
-                            # --- 3. Send Reply ---
-                            send_result = await send_reply(to=sender_phone, message=reply)
+                            # --- 4. Send Reply (No DB Connection Held) ---
+                            send_result = await send_reply(to=sender_phone, data=reply)
 
-                            whatsapp_message_id = None
+                            whatsapp_message_id_for_log = None
                             if send_result and "messages" in send_result and len(send_result["messages"]) > 0:
-                                whatsapp_message_id = send_result["messages"][0].get("id")
+                                whatsapp_message_id_for_log = send_result["messages"][0].get("id")
 
-                            # --- 4. Log OUTGOING Message ---
-                            if company_id_for_log:
+                            # --- 5. Log OUTGOING Message (Short DB Session) ---
+                            db = SessionLocal()
+                            try:
                                 new_log = PydanticWhatsappLog(
                                     company_id=company_id_for_log,
+                                    user_id=user_id_for_log,
                                     message_type="text",
-                                    whatsapp_message_id=whatsapp_message_id,
+                                    whatsapp_message_id=whatsapp_message_id_for_log,
                                     phone=sender_phone,
                                     message=reply,
                                     status="sent"
                                 )
-                                create_whatsapp_log(db, new_log)
+                                create_whatsapp_log(db, new_log, user_id=user_id_for_log)
+                            except Exception as e:
+                                print(f"❌ Failed to log outgoing message: {e}")
+                            finally:
+                                db.close()
 
     except Exception as e:
         print(f"Error: {str(e)}")
         traceback.print_exc()
     
-    finally:
-        db.close()
-        print("✅ BACKGROUND TASK FINISHED")
+    print("✅ BACKGROUND TASK FINISHED")
 
 # -----------------------------
 # Webhook verification
@@ -180,9 +202,15 @@ async def send_meta_whatsapp_message(
 # -----------------------------
 @router.post("/webhook")
 async def receive_webhook(request: Request):
-    data = await request.json()
-    asyncio.create_task(process_whatsapp_message(data))
-    return {"status": "received"}
+    print("🔔 POST /webhook received a request")
+    try:
+        data = await request.json()
+        print(f"📦 Webhook Payload: {json.dumps(data, indent=2)}")
+        asyncio.create_task(process_whatsapp_message(data))
+        return {"status": "received"}
+    except Exception as e:
+        print(f"❌ Error in POST /webhook: {e}")
+        return {"status": "error", "message": str(e)}
     
 @router.get("/test")
 async def test_endpoint():

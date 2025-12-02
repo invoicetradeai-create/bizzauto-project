@@ -37,7 +37,8 @@ def create_scheduled_message(
 def read_scheduled_messages(
     skip: int = 0, 
     limit: int = 100, 
-    db: Session = Depends(set_rls_context)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
-    messages = crud.get_scheduled_whatsapp_messages(db, skip=skip, limit=limit)
+    messages = crud.get_scheduled_whatsapp_messages(db, user_id=user.id, skip=skip, limit=limit)
     return messages
