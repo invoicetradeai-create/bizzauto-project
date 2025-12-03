@@ -1,0 +1,11 @@
+{
+  "messaging_product": "whatsapp",
+  "to": "923343207049",
+  "type": "template",
+  "template": {
+    "name": "hello_world",
+    "language": {
+      "code": "en_US"
+    }
+  }
+}

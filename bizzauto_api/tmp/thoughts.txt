@@ -1,0 +1,27 @@
+import asyncio
+import os
+from whatsapp_utils import send_reply
+from dotenv import load_dotenv
+
+load_dotenv()
+
+async def test_hello_world():
+    # Replace with a valid phone number from the user's previous logs or ask them
+    # For now, I'll use the one from the logs: 923001234567 (sanitized)
+    # Actually, I'll use a placeholder and ask the user to run it with their number if needed, 
+    # but better to just use the code to send to the number in the logs if I can find it.
+    # The log showed: 'to': '923420024683' (from previous logs? No, that was in the code comments or similar)
+    # The user's log shows: 'phone': '' in JWT, but they are sending TO a number.
+    # I'll just hardcode a likely number or ask the user. 
+    # Actually, I can't easily know the number without asking.
+    # I will try to send to the number that failed in the log if I can see it?
+    # The log doesn't show the 'to' number in the error message.
+    
+    # I will create a script that tries to send 'hello_world' to a hardcoded number 
+    # but I don't have a number.
+    # I will instead create a script that the user can run, or I will just modify the code to try hello_world temporarily.
+    pass
+
+# Actually, I'll just ask the user to check the language first.
+# The error is specific: "template name (expense_report) does not exist in en_US"
+# This means the API call is reaching Meta, but Meta can't find the template in that locale.

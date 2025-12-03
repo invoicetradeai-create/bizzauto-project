@@ -1,0 +1,11 @@
+google-cloud-vision-api.json
+vision-api.json
+*.env
+*.env.local
+node_modules/
+.next/
+dist/
+__pycache__/
+*.pyc
+".env"
+
