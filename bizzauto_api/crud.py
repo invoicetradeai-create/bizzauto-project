@@ -595,5 +595,3 @@ def delete_setting(db: Session, setting_id: UUID):
         db.delete(db_setting)
         db.commit()
     return db_setting
-
-

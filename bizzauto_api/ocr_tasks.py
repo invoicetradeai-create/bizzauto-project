@@ -327,4 +327,3 @@ def process_item(item_data, items_list, db):
             "price": unit_price,
             "total": total
         })
-        print(f"✗ Product '{description}' not found in database")

@@ -150,7 +150,7 @@ export default function InventoryPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct?.id) return;
-    
+
     const companyId = companies[0]?.id;
     if (!companyId) {
       alert("No companies found. Please create a company first.");
@@ -303,45 +303,44 @@ export default function InventoryPage() {
               </thead>
 
               <tbody>
-  {filtered.map((p, index) => {
-    const isLowStock = p.stock_quantity < 20;
-    return (
-      <tr
-        key={p.id || `${p.sku}-${index}`} // ✅ fallback if id is missing
-        className={`border-b border-border ${
-          isLowStock ? "bg-destructive/10" : "hover:bg-muted"
-        }`}
-      >
-        <td className="p-3">{p.name}</td>
-        <td className="p-3">{p.sku}</td>
-        <td className="p-3">{p.category}</td>
-        <td className="p-3">{p.stock_quantity}</td>
-        <td className="p-3">Rs {p.sale_price}</td>
-        <td className="p-3">
-          {isLowStock ? (
-            <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit">
-              <AlertTriangle className="w-3 h-3" /> Low Stock
-            </span>
-          ) : (
-            <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
-              In Stock
-            </span>
-          )}
-        </td>
-        <td className="p-3 flex justify-end gap-3">
-          <Edit3
-            onClick={() => handleEdit(p)}
-            className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-primary"
-          />
-          <Trash2
-            onClick={() => handleDelete(p.id)}
-            className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-destructive"
-          />
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
+                {filtered.map((p, index) => {
+                  const isLowStock = p.stock_quantity < 20;
+                  return (
+                    <tr
+                      key={p.id || `${p.sku}-${index}`} // ✅ fallback if id is missing
+                      className={`border-b border-border ${isLowStock ? "bg-destructive/10" : "hover:bg-muted"
+                        }`}
+                    >
+                      <td className="p-3">{p.name}</td>
+                      <td className="p-3">{p.sku}</td>
+                      <td className="p-3">{p.category}</td>
+                      <td className="p-3">{p.stock_quantity}</td>
+                      <td className="p-3">Rs {p.sale_price}</td>
+                      <td className="p-3">
+                        {isLowStock ? (
+                          <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit">
+                            <AlertTriangle className="w-3 h-3" /> Low Stock
+                          </span>
+                        ) : (
+                          <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
+                            In Stock
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 flex justify-end gap-3">
+                        <Edit3
+                          onClick={() => handleEdit(p)}
+                          className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-primary"
+                        />
+                        <Trash2
+                          onClick={() => handleDelete(p.id)}
+                          className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-destructive"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
 
             </table>
           </div>

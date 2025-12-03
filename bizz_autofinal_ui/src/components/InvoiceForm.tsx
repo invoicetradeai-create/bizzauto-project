@@ -30,7 +30,7 @@ export default function InvoiceForm({ onSubmit, onCancel, initialData }: Invoice
     client_id: initialData?.client_id || '',
     // Use the string directly if available to avoid timezone shifts. 
     // For new invoices, use local date string (YYYY-MM-DD)
-    invoice_date: initialData?.invoice_date || new Date().toLocaleDateString('en-CA'), 
+    invoice_date: initialData?.invoice_date || new Date().toLocaleDateString('en-CA'),
     total_amount: initialData?.total_amount || 0,
     payment_status: initialData?.payment_status || 'unpaid',
     notes: initialData?.notes || '',

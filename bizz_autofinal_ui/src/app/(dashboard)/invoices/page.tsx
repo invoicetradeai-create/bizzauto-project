@@ -32,11 +32,11 @@ export default function InvoicesPage() {
   const [search, setSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
   const fetchInvoices = useCallback(async () => {
@@ -83,9 +83,9 @@ export default function InvoicesPage() {
       let errorMessage = err.message || (editingInvoice ? "Failed to update invoice." : "Failed to create invoice.");
       if (err.response?.data?.detail) {
         if (Array.isArray(err.response.data.detail)) {
-            errorMessage = err.response.data.detail.map((e: any) => e.msg).join(", ");
+          errorMessage = err.response.data.detail.map((e: any) => e.msg).join(", ");
         } else {
-            errorMessage = err.response.data.detail;
+          errorMessage = err.response.data.detail;
         }
       }
       setError(errorMessage);
@@ -180,10 +180,10 @@ export default function InvoicesPage() {
                         <div className="relative inline-block">
                           <Sheet>
                             <SheetTrigger asChild>
-                               <Button variant="ghost" size="icon" onClick={() => handleOpenEditSheet(invoice)}><Edit className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleOpenEditSheet(invoice)}><Edit className="h-4 w-4" /></Button>
                             </SheetTrigger>
                           </Sheet>
-                           <Button variant="ghost" size="icon" onClick={() => handleDeleteInvoice(invoice.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteInvoice(invoice.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
                       </td>
                     </tr>
