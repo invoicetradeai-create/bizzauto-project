@@ -152,7 +152,7 @@ def health_check():
 class GeminiPrompt(BaseModel):
     prompt: str
 
-gemini_model = genai.GenerativeModel('gemini-pro')
+gemini_model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.post("/gemini-generate")
 async def generate_with_gemini(prompt: GeminiPrompt):
