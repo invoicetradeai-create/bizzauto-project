@@ -15,8 +15,8 @@ print(f"Found API Key: {api_key[:5]}...{api_key[-5:]}")
 genai.configure(api_key=api_key)
 
 try:
-    print("Attempting to initialize gemini-1.5-flash...")
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    print("Attempting to initialize gemini-2.0-flash...")
+    model = genai.GenerativeModel('gemini-2.0-flash')
     
     print("Sending test prompt...")
     response = model.generate_content("Hello, just checking if you are active. Reply with 'Yes, I am active'.")
