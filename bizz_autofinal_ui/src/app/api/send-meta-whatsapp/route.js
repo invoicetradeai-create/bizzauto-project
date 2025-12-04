@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 // This is the URL of your FastAPI backend.
 // In a real-world scenario, this should be in an environment variable.
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export async function POST(request) {
   try {

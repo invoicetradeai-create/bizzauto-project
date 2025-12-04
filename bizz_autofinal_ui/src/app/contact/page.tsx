@@ -60,9 +60,8 @@ const Contact = () => {
         message: message
       };
 
-      // Assuming the backend is running on localhost:8000
       // In production, this should be an environment variable or relative path if proxied
-      const response = await axios.post('http://localhost:8000/api/contact', payload);
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/contact`, payload);
 
       if (response.status === 201 || response.status === 200) {
         alert("Thank you! Your message has been sent. We will contact you within 24 hours.");
