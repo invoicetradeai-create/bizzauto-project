@@ -12,14 +12,15 @@ import traceback # Import traceback for detailed error logging
 # ============================
 def _get_product_details_logic(
     user_id: UUID,
+    company_id: UUID,
     product_name: str | None = None,
     product_id: int | None = None
 ) -> dict:
     """
-    Internal logic to get product details with user_id filtering.
+    Internal logic to get product details with user_id and company_id filtering.
     """
     print(f"--- AGENT:_get_product_details_logic ---")
-    print(f"Received call for user_id: '{user_id}', product_name: '{product_name}', product_id: '{product_id}'")
+    print(f"Received call for user_id: '{user_id}', company_id: '{company_id}', product_name: '{product_name}', product_id: '{product_id}'")
     print(f"--------------------------------------")
     db = SessionLocal()
     try:
@@ -34,15 +35,15 @@ def _get_product_details_logic(
             except ValueError:
                 return {"error": "Invalid product_id format"}
         elif product_name:
-            product = crud.get_product_by_name(db, name=product_name, user_id=user_id)
+            product = crud.get_product_by_name(db, name=product_name, user_id=user_id, company_id=company_id)
         else:
             return {"error": "Provide product_name or product_id"}
 
         if not product:
             return {"error": "Product not found"}
             
-        # Security check: Ensure product belongs to the user
-        if product.user_id != user_id:
+        # Security check: Ensure product belongs to the user and company
+        if product.user_id != user_id or product.company_id != company_id:
              return {"error": "Product not found"}
 
         return {
@@ -89,7 +90,7 @@ chat_sessions = {}
 # ============================
 # Runner Wrapper (Async Fixed)
 # ============================
-async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID) -> str:
+async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID, company_id: UUID) -> str:
     """
     Async wrapper that handles the chat logic
     """
@@ -104,7 +105,7 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID) -> 
                 """
                 if not user_id:
                     return {"error": "User context missing"}
-                return _get_product_details_logic(user_id, product_name, product_id)
+                return _get_product_details_logic(user_id, company_id, product_name, product_id)
 
             tools_list = [get_product_details]
             

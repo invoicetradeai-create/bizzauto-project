@@ -55,17 +55,19 @@ def delete_company(db: Session, company_id: UUID):
 def get_product(db: Session, product_id: UUID, user_id: UUID):
     return db.query(Product).filter(Product.id == product_id, Product.user_id == user_id).first()
 
-def get_product_by_name(db: Session, name: str, user_id: UUID = None):
+def get_product_by_name(db: Session, name: str, user_id: UUID = None, company_id: UUID = None):
     print(f"--- CRUD:get_product_by_name ---")
-    print(f"Attempting to find product by name: '{name}' for user_id: '{user_id}'")
+    print(f"Attempting to find product by name: '{name}' for user_id: '{user_id}' and company_id: '{company_id}'")
     query = db.query(Product).filter(Product.name.ilike(f"%{name}%"))
     if user_id:
         query = query.filter(Product.user_id == user_id)
+    if company_id:
+        query = query.filter(Product.company_id == company_id)
     
     result = query.first()
     print(f"Query result: {'Found product' if result else 'No product found'}")
     if result:
-        print(f"Found product ID: {result.id}, Belongs to user_id: {result.user_id}")
+        print(f"Found product ID: {result.id}, Belongs to user_id: {result.user_id}, company_id: {result.company_id}")
     print(f"---------------------------------")
     return result
 

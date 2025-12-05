@@ -210,7 +210,7 @@ export const DailyExpensesContent: React.FC = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="default" size="sm" onClick={() => handleExport('pdf')} disabled={exportingPDF} className="bg-blue-600 hover:bg-blue-700 text-white">
-            <FileText className="w-4 h-4 mr-2" /> {exportingPDF ? 'Exporting...' : 'Export PDF'}
+            <FileText className="w-4 h-4 mr-2" /> {exportingPDF ? 'Downloading...' : 'Download PDF'}
           </Button>
         </div>
       </div>

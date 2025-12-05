@@ -43,6 +43,8 @@ async def process_whatsapp_message(entry_data: dict):
         for entry in entry_data.get("entry", []):
             for change in entry.get("changes", []):
                 value = change.get("value", {})
+                metadata = value.get("metadata", {})
+                received_phone_number_id = metadata.get("phone_number_id")
                 
                 if "messages" in value:
                     for message in value.get("messages", []):
@@ -62,22 +64,24 @@ async def process_whatsapp_message(entry_data: dict):
                             
                             db = SessionLocal()
                             try:
-                                from sql_models import Client
-                                from whatsapp_utils import sanitize_phone_number
+                                from sql_models import Company
                                 
-                                sanitized_phone = sanitize_phone_number(sender_phone)
-                                client = db.query(Client).filter(Client.phone == sanitized_phone).first()
-
-                                if not client:
-                                    print(f"⚠️  No client found for phone number: {sender_phone}. Ignoring message.")
+                                if not received_phone_number_id:
+                                    print(f"⚠️  No phone_number_id in webhook payload. Ignoring message.")
                                     continue
 
-                                user_id_for_log = client.user_id
-                                company_id_for_log = client.company_id
-                                
-                                if not user_id_for_log or not company_id_for_log:
-                                    print(f"⚠️  Client {client.id} is missing user_id or company_id. Ignoring message.")
+                                company = db.query(Company).filter(Company.phone_number_id == received_phone_number_id).first()
+
+                                if not company:
+                                    print(f"⚠️  No company found for phone_number_id: {received_phone_number_id}. Ignoring message.")
                                     continue
+                                
+                                if not company.users:
+                                    print(f"⚠️  Company {company.id} has no users. Ignoring message.")
+                                    continue
+
+                                user_id_for_log = company.users[0].id
+                                company_id_for_log = company.id
                                     
                                 print(f"✅ Found context: User ID {user_id_for_log}, Company ID {company_id_for_log}")
 
@@ -103,7 +107,7 @@ async def process_whatsapp_message(entry_data: dict):
                                 continue
                                 
                             # --- 3. Run Agent (No DB Connection Held) ---
-                            reply = await run_whatsapp_agent(incoming_text, sender_phone, user_id=user_id_for_log)
+                            reply = await run_whatsapp_agent(incoming_text, sender_phone, user_id=user_id_for_log, company_id=company_id_for_log)
                             
                             if not reply:
                                 continue
@@ -226,3 +230,5 @@ async def test_endpoint():
         "phone_id_set": bool(PHONE_NUMBER_ID),
         "verify_token_set": bool(VERIFY_TOKEN)
     }
+from sql_models import Company
+
