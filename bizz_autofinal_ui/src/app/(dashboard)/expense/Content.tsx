@@ -171,7 +171,8 @@ export const DailyExpensesContent: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const res = await fetch('/api/send-meta-whatsapp', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/meta_whatsapp/send-meta-whatsapp';
+      const res = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,8 +182,9 @@ export const DailyExpensesContent: React.FC = () => {
       });
 
       const responseData = await res.json();
-      if (!res.ok || responseData.error) {
-        throw new Error(responseData.error || 'Failed to send WhatsApp message');
+      if (!res.ok) {
+        console.error('WhatsApp API Error:', responseData);
+        throw new Error(responseData.detail || responseData.message || responseData.error || 'Failed to send WhatsApp message');
       }
 
       alert('Expense report sent via WhatsApp successfully!');
