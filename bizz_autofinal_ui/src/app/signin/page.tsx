@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import AuthCard from "@/components/AuthCard";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api-client";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabaseClient";
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function SignIn() {
   const router = useRouter();
@@ -87,33 +92,12 @@ export default function SignIn() {
     if (data.user) {
       localStorage.setItem("user_id", data.user.id);
 
-      try {
-        // Fetch user role from backend
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, {
-          headers: {
-            "Authorization": `Bearer ${data.session?.access_token}`,
-          },
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          if (userData.role === "admin") {
-            console.log("Redirecting to ADMIN dashboard...");
-            router.push("/admin/dashboard");
-          } else {
-            console.log("Redirecting to CLIENT dashboard...");
-            router.push("/dashboard");
-          }
-        } else {
-          // Fallback if backend fetch fails
-          console.log("Failed to fetch role, defaulting to client dashboard...");
-          router.push("/dashboard");
-        }
-      } catch (err) {
-        console.error("Error fetching user role:", err);
-        router.push("/dashboard");
-      }
-    }
+              // Use the consistent apiClient to fetch user data
+              const { data: user } = await apiClient.get('/api/users/me');
+              if (user) {
+                console.log("Redirecting to dashboard...");
+                router.push("/dashboard");
+              }    }
     setLoading(false);
   };
 
