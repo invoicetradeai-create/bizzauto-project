@@ -1,5 +1,5 @@
 
-file_path = r"e:\bizz auto finally work last\bizzauto-project\bizzauto_api\routers\api\meta_whatsapp.py"
+file_path = r"E:\bizzauto-work\bizzauto-project\bizzauto_api\routers\api\meta_whatsapp.py"
 
 with open(file_path, "r", encoding="utf-8") as f:
     content = f.read()
