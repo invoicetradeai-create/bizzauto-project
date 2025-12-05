@@ -73,23 +73,22 @@ async def process_whatsapp_message(entry_data: dict):
                                 company = db.query(Company).filter(Company.phone_number_id == received_phone_number_id).first()
 
                                 if not company:
-                                    print(f"⚠️  No company found for phone_number_id: {received_phone_number_id}. Ignoring message.")
-                                    continue
-                                
-                                if not company.users:
-                                    print(f"⚠️  Company {company.id} has no users. Ignoring message.")
-                                    continue
-
-                                user_id_for_log = company.users[0].id
-                                company_id_for_log = company.id
+                                    print(f"⚠️  No company found for phone_number_id: {received_phone_number_id}. This might be a lead. Proceeding with user_id=None.")
+                                    # company_id_for_log remains None
+                                else:
+                                    company_id_for_log = company.id
+                                    if company.users:
+                                        user_id_for_log = company.users[0].id
+                                    else:
+                                        print(f"⚠️ Company {company.id} has no users, but continuing to send Auto-Reply.")
                                     
                                 print(f"✅ Found context: User ID {user_id_for_log}, Company ID {company_id_for_log}")
 
                                 # Log INCOMING Message
                                 try:
                                     incoming_log = PydanticWhatsappLog(
-                                        company_id=company_id_for_log,
-                                        user_id=user_id_for_log,
+                                        company_id=company_id_for_log, # company_id can be None for leads
+                                        user_id=user_id_for_log, # user_id can be None for leads
                                         message_type="text",
                                         whatsapp_message_id=message_id,
                                         phone=sender_phone,
@@ -103,14 +102,15 @@ async def process_whatsapp_message(entry_data: dict):
                             finally:
                                 db.close()
 
-                            if not user_id_for_log:
-                                continue
-                                
                             # --- 3. Run Agent (No DB Connection Held) ---
                             reply = await run_whatsapp_agent(incoming_text, sender_phone, user_id=user_id_for_log, company_id=company_id_for_log)
                             
                             if not reply:
-                                continue
+                                if company:
+                                    reply = f"Welcome to {company.name}! How can we help you today?"
+                                else:
+                                    # This case happens if no company is found at all
+                                    reply = "Thanks for your message! We'll get back to you shortly."
 
                             # --- 4. Send Reply (No DB Connection Held) ---
                             send_result = await send_reply(to=sender_phone, data=reply) # FIX APPLIED HERE

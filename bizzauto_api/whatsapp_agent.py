@@ -11,8 +11,8 @@ import traceback # Import traceback for detailed error logging
 # 1. Product Lookup Tool (Internal Logic)
 # ============================
 def _get_product_details_logic(
-    user_id: UUID,
-    company_id: UUID,
+    user_id: UUID | None,
+    company_id: UUID | None,
     product_name: str | None = None,
     product_id: int | None = None
 ) -> dict:
@@ -31,7 +31,7 @@ def _get_product_details_logic(
                 # Note: Assuming product_id passed from LLM is UUID string or int. 
                 # If int, it might be wrong if ID is UUID. 
                 # But existing code used UUID(str(product_id)).
-                product = crud.get_product(db, product_id=UUID(str(product_id)))
+                product = crud.get_product(db, product_id=UUID(str(product_id)), user_id=user_id, company_id=company_id)
             except ValueError:
                 return {"error": "Invalid product_id format"}
         elif product_name:
@@ -42,9 +42,7 @@ def _get_product_details_logic(
         if not product:
             return {"error": "Product not found"}
             
-        # Security check: Ensure product belongs to the user and company
-        if product.user_id != user_id or product.company_id != company_id:
-             return {"error": "Product not found"}
+
 
         return {
             "name": product.name,
@@ -90,7 +88,7 @@ chat_sessions = {}
 # ============================
 # Runner Wrapper (Async Fixed)
 # ============================
-async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID, company_id: UUID) -> str:
+async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | None, company_id: UUID | None) -> str:
     """
     Async wrapper that handles the chat logic
     """
@@ -103,8 +101,8 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID, com
                 """
                 Use this function to get the details of a product, such as its price and availability.
                 """
-                if not user_id:
-                    return {"error": "User context missing"}
+                if not user_id or not company_id:
+                    return {"error": "User or company context missing. Cannot look up products for unknown leads."}
                 return _get_product_details_logic(user_id, company_id, product_name, product_id)
 
             tools_list = [get_product_details]
