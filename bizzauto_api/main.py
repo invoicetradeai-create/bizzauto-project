@@ -5,7 +5,7 @@ import json
 import time
 from google.oauth2 import service_account
 from google.cloud import vision
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import google.generativeai as genai
@@ -63,6 +63,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Catch-all for OPTIONS requests to ensure CORS preflight always succeeds
+@app.options("/{path:path}")
+async def catch_all_options():
+    return Response(status_code=200)
 
 # ✅ Create database tables on startup
 @app.on_event("startup")
