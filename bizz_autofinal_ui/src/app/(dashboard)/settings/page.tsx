@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Moon, Sun, Bell, Menu, Search, User, Mail, Phone, Building, Lock, Key } from "lucide-react";
 import Sidebar, { NavigationContent } from "@/components/Sidebar";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label"; // Import Label
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { apiClient } from "@/lib/api-client";
@@ -96,14 +98,11 @@ function SettingsContent() {
       setLoading(true);
       setError(null);
       try {
-        // 1. Fetch users to get a valid user ID
-        const usersRes = await apiClient.get<UserType[]>('/api/users');
-        const users = usersRes.data;
+        // 1. Fetch current user to get user ID
+        const usersRes = await apiClient.get<UserType>('/api/users/me'); // Changed to /api/users/me
+        const currentUser = usersRes.data; // Now directly returns a single UserType object
 
-        if (!users || users.length === 0) {
-          throw new Error("No users found. Cannot manage settings.");
-        }
-        const currentUserId = users[0].id;
+        const currentUserId = currentUser.id;
         setUserId(currentUserId);
 
         // 2. Fetch all settings
@@ -220,61 +219,92 @@ function SettingsContent() {
           ) : (
             <div>
               {activeTab === "Profile" && (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold mb-4">Profile Settings</h2>
-                  <div>
-                    <label htmlFor="fullName" className="block text-sm font-medium text-foreground">Full Name</label>
-                    <Input id="fullName" value={settings.profile.fullName} onChange={(e) => handleSettingChange("profile", "fullName", e.target.value)} />
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-foreground">Email</label>
-                    <Input id="email" value={settings.profile.email} onChange={(e) => handleSettingChange("profile", "email", e.target.value)} />
-                  </div>
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-foreground">Phone</label>
-                    <Input id="phone" value={settings.profile.phone} onChange={(e) => handleSettingChange("profile", "phone", e.target.value)} />
-                  </div>
-                  <div>
-                    <label htmlFor="company" className="block text-sm font-medium text-foreground">Company</label>
-                    <Input id="company" value={settings.profile.company} onChange={(e) => handleSettingChange("profile", "company", e.target.value)} />
+                <div className="space-y-6 p-4 border rounded-lg bg-card">
+                  <h2 className="text-2xl font-bold text-foreground">Profile Settings</h2>
+                  <p className="text-muted-foreground">Manage your personal and company information.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Full Name</Label>
+                      <Input id="fullName" value={settings.profile.fullName} onChange={(e) => handleSettingChange("profile", "fullName", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" value={settings.profile.email} onChange={(e) => handleSettingChange("profile", "email", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input id="phone" value={settings.profile.phone} onChange={(e) => handleSettingChange("profile", "phone", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="company">Company</Label>
+                      <Input id="company" value={settings.profile.company} onChange={(e) => handleSettingChange("profile", "company", e.target.value)} />
+                    </div>
                   </div>
                   <Button onClick={() => handleSave("profile")}>Save Profile</Button>
                 </div>
               )}
           
               {activeTab === "Notifications" && (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold mb-4">Notification Settings</h2>
-                  {/* Placeholder for Notification Settings */}
-                  <p className="text-muted-foreground">Notification settings content will go here.</p>
+                <div className="space-y-6 p-4 border rounded-lg bg-card">
+                  <h2 className="text-2xl font-bold text-foreground">Notification Settings</h2>
+                  <p className="text-muted-foreground">Configure how you receive alerts and updates.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    {Object.keys(settings.notifications).map((key) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={key}
+                          checked={settings.notifications[key]}
+                          onCheckedChange={(checked) => handleSettingChange("notifications", key, checked)}
+                        />
+                        <Label htmlFor={key} className="capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').trim()} {/* Converts camelCase to "Camel Case" */}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                   <Button onClick={() => handleSave("notifications")}>Save Notifications</Button>
                 </div>
               )}
           
               {activeTab === "Integrations" && (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold mb-4">Integration Settings</h2>
-                  {/* Placeholder for Integration Settings */}
-                  <p className="text-muted-foreground">Integration settings content will go here.</p>
+                <div className="space-y-6 p-4 border rounded-lg bg-card">
+                  <h2 className="text-2xl font-bold text-foreground">Integration Settings</h2>
+                  <p className="text-muted-foreground">Connect with third-party services.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsappApi">WhatsApp API Key</Label>
+                      <Input id="whatsappApi" value={settings.integrations.whatsappApi} onChange={(e) => handleSettingChange("integrations", "whatsappApi", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gmailApi">Gmail API Key</Label>
+                      <Input id="gmailApi" value={settings.integrations.gmailApi} onChange={(e) => handleSettingChange("integrations", "gmailApi", e.target.value)} />
+                    </div>
+                  </div>
                   <Button onClick={() => handleSave("integrations")}>Save Integrations</Button>
                 </div>
               )}
           
               {activeTab === "Alerts" && (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold mb-4">Alert Settings</h2>
-                  {/* Placeholder for Alert Settings */}
-                  <p className="text-muted-foreground">Alert settings content will go here.</p>
+                <div className="space-y-6 p-4 border rounded-lg bg-card">
+                  <h2 className="text-2xl font-bold text-foreground">Alert Settings</h2>
+                  <p className="text-muted-foreground">Configure specific alert preferences.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="alertPhone">Alert Phone Number</Label>
+                      <Input id="alertPhone" value={settings.alerts.phone} onChange={(e) => handleSettingChange("alerts", "phone", e.target.value)} />
+                    </div>
+                  </div>
                   <Button onClick={() => handleSave("alerts")}>Save Alerts</Button>
                 </div>
               )}
             </div>
-          )}        </div>
+          )}
       </div>
+            
+    </div>
     </div>
   );
 }
-
 export default function SettingsPage() {
   return (
     <Suspense fallback={<div>Loading settings...</div>}>
