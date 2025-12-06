@@ -90,8 +90,6 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-
-
 # Session Store
 chat_sessions = {}
 
@@ -128,6 +126,7 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
             company_name = "BizzAuto" # Default company name
             try:
                 if company_id:
+                    # Make sure crud.get_company exists in your crud.py
                     company = crud.get_company(db, company_id=company_id)
                     if company and company.name:
                         company_name = company.name
