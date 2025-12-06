@@ -1,0 +1,5 @@
+It appears you are still encountering a `405 Method Not Allowed` error, specifically for the settings page. I have already applied a fix to `bizzauto_api/routers/api/settings.py` to address this.
+
+Could you please confirm if you have restarted your backend application (if running locally) or redeployed it (if it's on Render) *after* I made the changes to `bizzauto_api/routers/api/settings.py` and `bizzauto_api/routers/api/inventory.py` and provided the last set of instructions?
+
+It's crucial for the backend changes to be live for the frontend to see the effect. If you have restarted/re-deployed and the issue persists, then we'll need to investigate further.
