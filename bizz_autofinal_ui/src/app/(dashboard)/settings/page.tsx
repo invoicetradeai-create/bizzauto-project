@@ -107,7 +107,7 @@ function SettingsContent() {
         setUserId(currentUserId);
 
         // 2. Fetch all settings
-        const settingsRes = await apiClient.get<Setting[]>('/tables/settings/');
+        const settingsRes = await apiClient.get<Setting[]>('/api/settings/');
         if (settingsRes.data) {
           const newSettings: Record<string, any> = {};
           const newSettingsMap: Record<string, UUID> = {};
@@ -169,10 +169,10 @@ function SettingsContent() {
     try {
       if (settingId) {
         // Update existing setting
-        await apiClient.put(`/tables/settings/${settingId}`, data);
+        await apiClient.put(`/api/settings/${settingId}`, data);
       } else {
         // Create new setting
-        await apiClient.post('/tables/settings/', data);
+        await apiClient.post('/api/settings/', data);
       }
       alert(`${key.charAt(0).toUpperCase() + key.slice(1)} settings saved!`);
     } catch (err: any) {
@@ -213,104 +213,63 @@ function SettingsContent() {
             ))}
           </div>
 
-          {loading ? <p>Loading settings...</p> : error ? <p className="text-destructive">{error}</p> : (
-            <>
+          {loading ? (
+            <p>Loading settings...</p>
+          ) : error ? (
+            <p className="text-destructive">{error}</p>
+          ) : (
+            <div>
               {activeTab === "Profile" && (
-                <div className="bg-card border rounded-lg p-6">
-                  <h2 className="text-lg font-semibold mb-4">Profile</h2>
-
-                  {/* Centered Avatar Section */}
-                  <div className="flex flex-col items-center justify-center mb-8">
-                    <div className="relative group">
-                      <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-background shadow-xl cursor-pointer transition-transform hover:scale-105">
-                        <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
-                          {settings.profile.fullName?.charAt(0).toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 shadow-lg cursor-pointer hover:bg-primary/90 transition-colors">
-                        <User className="h-4 w-4" />
-                      </div>
-                    </div>
-                    <p className="mt-4 text-lg font-medium">{settings.profile.fullName || 'User Name'}</p>
-                    <p className="text-sm text-muted-foreground">{settings.profile.email || 'user@example.com'}</p>
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold mb-4">Profile Settings</h2>
+                  <div>
+                    <label htmlFor="fullName" className="block text-sm font-medium text-foreground">Full Name</label>
+                    <Input id="fullName" value={settings.profile.fullName} onChange={(e) => handleSettingChange("profile", "fullName", e.target.value)} />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {(Object.keys(settings.profile) as Array<keyof ProfileSettings>).map((key) => (
-                      <div key={key}>
-                        <label className="text-sm mb-1 block capitalize">{key.replace(/([A-Z])/g, ' ')}</label>
-                        <div className="relative">
-                          <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <input value={settings.profile[key]} onChange={(e) => handleSettingChange('profile', key, e.target.value)} className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm bg-card" />
-                        </div>
-                      </div>
-                    ))}
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-foreground">Email</label>
+                    <Input id="email" value={settings.profile.email} onChange={(e) => handleSettingChange("profile", "email", e.target.value)} />
                   </div>
-                  <div className="mt-8 flex justify-end">
-                    <Button onClick={() => handleSave('profile')}>Save Changes</Button>
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-foreground">Phone</label>
+                    <Input id="phone" value={settings.profile.phone} onChange={(e) => handleSettingChange("profile", "phone", e.target.value)} />
                   </div>
+                  <div>
+                    <label htmlFor="company" className="block text-sm font-medium text-foreground">Company</label>
+                    <Input id="company" value={settings.profile.company} onChange={(e) => handleSettingChange("profile", "company", e.target.value)} />
+                  </div>
+                  <Button onClick={() => handleSave("profile")}>Save Profile</Button>
                 </div>
               )}
-
+          
               {activeTab === "Notifications" && (
-                <div className="bg-card border rounded-lg p-6">
-                  <h2 className="text-lg font-semibold mb-4">Notification Preferences</h2>
-                  <div className="space-y-4">
-                    {(Object.keys(settings.notifications) as Array<keyof NotificationSettings>).map((key) => (
-                      <div key={key} className="flex items-center justify-between border-b py-2 text-sm">
-                        <span className="capitalize">{key.replace(/([A-Z])/g, ' ')}</span>
-                        <button onClick={() => handleSettingChange('notifications', key, !settings.notifications[key])} className={`relative w-12 h-6 rounded-full transition-colors ${settings.notifications[key] ? "bg-primary" : "bg-muted"}`}>
-                          <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${settings.notifications[key] ? "translate-x-6" : ""}`}></span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-8 flex justify-end">
-                    <Button onClick={() => handleSave('notifications')}>Save Preferences</Button>
-                  </div>
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold mb-4">Notification Settings</h2>
+                  {/* Placeholder for Notification Settings */}
+                  <p className="text-muted-foreground">Notification settings content will go here.</p>
+                  <Button onClick={() => handleSave("notifications")}>Save Notifications</Button>
                 </div>
               )}
-
+          
               {activeTab === "Integrations" && (
-                <div className="bg-card border rounded-lg p-6">
-                  <h2 className="text-lg font-semibold mb-4">API Integrations</h2>
-                  <div className="space-y-6">
-                    {(Object.keys(settings.integrations) as Array<keyof IntegrationSettings>).map((key) => (
-                      <div key={key}>
-                        <label className="text-sm font-medium capitalize">{key.replace(/([A-Z])/g, ' ')}</label>
-                        <div className="relative mt-1">
-                          <Key className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                          <input value={settings.integrations[key]} onChange={(e) => handleSettingChange('integrations', key, e.target.value)} className="w-full border rounded-lg pl-9 pr-3 py-2 bg-card" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-8 flex justify-end">
-                    <Button onClick={() => handleSave('integrations')}>Save API Keys</Button>
-                  </div>
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold mb-4">Integration Settings</h2>
+                  {/* Placeholder for Integration Settings */}
+                  <p className="text-muted-foreground">Integration settings content will go here.</p>
+                  <Button onClick={() => handleSave("integrations")}>Save Integrations</Button>
                 </div>
               )}
-
+          
               {activeTab === "Alerts" && (
-                <div className="bg-card border rounded-lg p-6">
-                  <h2 className="text-lg font-semibold mb-4">Alert Settings</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="text-sm font-medium">Admin WhatsApp Number</label>
-                      <div className="relative mt-1">
-                        <Phone className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                        <input value={settings.alerts.phone} onChange={(e) => handleSettingChange('alerts', 'phone', e.target.value)} className="w-full border rounded-lg pl-9 pr-3 py-2 bg-card" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-8 flex justify-end">
-                    <Button onClick={() => handleSave('alerts')}>Save Alert Settings</Button>
-                  </div>
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold mb-4">Alert Settings</h2>
+                  {/* Placeholder for Alert Settings */}
+                  <p className="text-muted-foreground">Alert settings content will go here.</p>
+                  <Button onClick={() => handleSave("alerts")}>Save Alerts</Button>
                 </div>
               )}
-            </>
-          )}
-        </div>
+            </div>
+          )}        </div>
       </div>
     </div>
   );
