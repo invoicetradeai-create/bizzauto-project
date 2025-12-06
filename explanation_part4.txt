@@ -1,5 +1,0 @@
-Okay, I understand. If you've deployed to Render, then the local `http://127.0.0.1:8000` or `http://127.0.0.1:49410` addresses are not what your deployed frontend would use to connect to your deployed backend.
-
-When deployed, your frontend needs to know the *public URL* of your deployed backend API. From the `bizzauto_api/main.py` file, I noticed that `https://bizzauto-project.onrender.com` is listed as an allowed CORS origin, which suggests this might be the URL of your deployed frontend.
-
-Could you please provide the specific Render link (URL) for your *backend API* deployment? This will help me confirm the correct URL that your frontend should be using when deployed.

@@ -1,9 +1,0 @@
-I have applied the necessary fixes to `bizzauto_api/routers/api/inventory.py` and `bizzauto_api/routers/api/settings.py`.
-
-Specifically, I have:
-*   **For `inventory.py`**: Changed `db: Session = Depends(get_db)` to `db: Session = Depends(set_rls_context)` in the `get_stock_summary` function.
-*   **For `settings.py`**: Changed `db: Session = Depends(get_db)` to `db: Session = Depends(set_rls_context)` and added `from dependencies import set_rls_context, get_current_user` and `from sql_models import User` in the `read_settings` function.
-
-These changes should resolve the `405 Method Not Allowed` errors for `GET` requests to `/api/inventory` (or more specifically `/api/inventory/stock-summary`) and `/api/settings`.
-
-Please restart your backend application (if it's running locally) or redeploy it (if it's on Render) and then retest these API endpoints. You should now be able to successfully perform `GET` requests on them.
