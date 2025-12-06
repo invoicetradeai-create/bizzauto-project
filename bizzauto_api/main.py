@@ -5,7 +5,7 @@ import json
 import time
 from google.oauth2 import service_account
 from google.cloud import vision
-from fastapi import FastAPI, Response, Depends
+from fastapi import FastAPI , Depends
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import google.generativeai as genai
@@ -45,12 +45,6 @@ import routers.admin as admin
 
 from database import engine, get_db, TestingSessionLocal, test_engine
 import sql_models
-from models import Client as PydanticClient # Added import
-from crud import create_client # Added import
-from dependencies import get_current_user, set_rls_context # Added imports
-from sql_models import User # Added import (for get_current_user return type)
-from uuid import UUID # Added import (for type hinting)
-from sqlalchemy.orm import Session # Added import for Session type hint
 
 app = FastAPI()
 
@@ -58,7 +52,7 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",
     "https://bizzauto-project.onrender.com",
-    "https://www.bizzauto.com",
+    "https://YOUR_FRONTEND_DOMAIN.vercel.app",
 ]
 
 # ✅ Add CORS middleware
@@ -69,11 +63,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Catch-all for OPTIONS requests to ensure CORS preflight always succeeds
-@app.options("/{path:path}")
-async def catch_all_options():
-    return Response(status_code=200)
 
 # ✅ Create database tables on startup
 @app.on_event("startup")
@@ -149,15 +138,6 @@ app.include_router(inventory.router, prefix="/api", tags=["inventory"])
 app.include_router(accounting.router, prefix="/api/accounting", tags=["accounting"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(contact.router, prefix="/api/contact", tags=["contact"])
-
-# Explicit POST route for client creation to bypass potential router issues
-@app.post("/api/clients", response_model=PydanticClient, tags=["clients"])
-def create_client_override(
-    client: PydanticClient,
-    db: Session = Depends(set_rls_context),
-    user: User = Depends(get_current_user)
-):
-    return create_client(db=db, client=client, user_id=user.id)
 
 # ✅ Root endpoint
 @app.get("/")
