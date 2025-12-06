@@ -27,11 +27,13 @@ def read_client(client_id: UUID, db: Session = Depends(set_rls_context)):
         raise HTTPException(status_code=404, detail="Client not found")
     return db_client
 
-# @router.post("/", response_model=PydanticClient)
-# def create_client_route(client: PydanticClient, db: Session = Depends(set_rls_context), user: User = Depends(get_current_user)):
-#     return create_client(db=db, client=client, user_id=user.id)
+@router.post("/", response_model=PydanticClient)
+@router.post("", response_model=PydanticClient)
+def create_client_route(client: PydanticClient, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return create_client(db=db, client=client, user_id=user.id, company_id=user.company_id)
 
 @router.put("/{client_id}", response_model=PydanticClient)
+@router.put("/{client_id}/", response_model=PydanticClient)
 def update_client_route(client_id: UUID, client: PydanticClient, db: Session = Depends(set_rls_context)):
     db_client = update_client(db=db, client_id=client_id, client=client)
     if db_client is None:
@@ -39,6 +41,7 @@ def update_client_route(client_id: UUID, client: PydanticClient, db: Session = D
     return db_client
 
 @router.delete("/{client_id}")
+@router.delete("/{client_id}/")
 def delete_client_route(client_id: UUID, db: Session = Depends(set_rls_context)):
     db_client = delete_client(db=db, client_id=client_id)
     if db_client is None:

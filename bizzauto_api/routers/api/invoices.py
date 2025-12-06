@@ -27,12 +27,14 @@ def read_invoice(invoice_id: UUID, db: Session = Depends(set_rls_context)):
     return db_invoice
 
 @router.post("/", response_model=PydanticInvoice)
-def create_invoice_route(invoice: InvoiceCreate, db: Session = Depends(set_rls_context), user: User = Depends(get_current_user)):
+@router.post("", response_model=PydanticInvoice)
+def create_invoice_route(invoice: InvoiceCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     # Use company_id from the authenticated user
     company_id = user.company_id
     return create_invoice(db=db, invoice=invoice, company_id=company_id, user_id=user.id)
 
 @router.put("/{invoice_id}", response_model=PydanticInvoice)
+@router.put("/{invoice_id}/", response_model=PydanticInvoice)
 def update_invoice_route(invoice_id: UUID, invoice: InvoiceCreate, db: Session = Depends(set_rls_context)):
     db_invoice = update_invoice(db=db, invoice_id=invoice_id, invoice_data=invoice)
     if db_invoice is None:
@@ -40,6 +42,7 @@ def update_invoice_route(invoice_id: UUID, invoice: InvoiceCreate, db: Session =
     return db_invoice
 
 @router.delete("/{invoice_id}")
+@router.delete("/{invoice_id}/")
 def delete_invoice_route(invoice_id: UUID, db: Session = Depends(set_rls_context)):
     db_invoice = delete_invoice(db=db, invoice_id=invoice_id)
     if db_invoice is None:

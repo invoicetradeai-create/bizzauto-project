@@ -27,10 +27,12 @@ def read_product(product_id: UUID, db: Session = Depends(set_rls_context)):
     return db_product
 
 @router.post("/", response_model=PydanticProduct)
-def create_product_route(product: PydanticProduct, db: Session = Depends(set_rls_context), user: User = Depends(get_current_user)):
-    return create_product(db=db, product=product, user_id=user.id)
+@router.post("", response_model=PydanticProduct)
+def create_product_route(product: PydanticProduct, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return create_product(db=db, product=product, user_id=user.id, company_id=user.company_id)
 
 @router.put("/{product_id}", response_model=PydanticProduct)
+@router.put("/{product_id}/", response_model=PydanticProduct)
 def update_product_route(product_id: UUID, product: PydanticProduct, db: Session = Depends(set_rls_context)):
     db_product = update_product(db=db, product_id=product_id, product=product)
     if db_product is None:
@@ -38,6 +40,7 @@ def update_product_route(product_id: UUID, product: PydanticProduct, db: Session
     return db_product
 
 @router.delete("/{product_id}")
+@router.delete("/{product_id}/")
 def delete_product_route(product_id: UUID, db: Session = Depends(set_rls_context)):
     db_product = delete_product(db=db, product_id=product_id)
     if db_product is None:

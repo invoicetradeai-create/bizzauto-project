@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from sql_models import (
     Company, Product, Client, User, Supplier, Invoice, InvoiceItem, Purchase, PurchaseItem, Expense, Lead, WhatsappLog, UploadedDoc, Setting, ScheduledWhatsappMessage
 )
+import json
+
 from models import (
     Company as PydanticCompany, 
     Product as PydanticProduct, 
@@ -59,26 +61,13 @@ def get_product(db: Session, product_id: UUID, user_id: UUID, company_id: UUID):
     return db.query(Product).filter(Product.id == product_id, Product.user_id == user_id, Product.company_id == company_id).first()
 
 def get_product_by_name(db: Session, name: str, company_id: UUID, user_id: UUID = None):
-    """
-    Retrieves a product by name, strictly filtered by company_id.
-    Optionally filters by user_id if provided.
-    """
-    print(f"--- CRUD:get_product_by_name ---")
-    print(f"Attempting to find product by name: '{name}' for company_id: '{company_id}' (user_id: '{user_id}')")
-    
     query = db.query(Product).filter(
         Product.company_id == company_id,
         Product.name.ilike(f"%{name}%")
     )
     if user_id:
         query = query.filter(Product.user_id == user_id)
-    
-    result = query.first()
-    print(f"Query result: {'Found product' if result else 'No product found'}")
-    if result:
-        print(f"Found product ID: {result.id}, Belongs to user_id: {result.user_id}, company_id: {result.company_id}")
-    print(f"---------------------------------")
-    return result
+    return query.first()
 
 def get_products(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, company_id: UUID = None):
     query = db.query(Product).filter(Product.user_id == user_id)
@@ -86,8 +75,8 @@ def get_products(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, co
         query = query.filter(Product.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_product(db: Session, product: PydanticProduct, user_id: UUID):
-    db_product = Product(**product.model_dump(exclude_none=True), user_id=user_id)
+def create_product(db: Session, product: PydanticProduct, user_id: UUID, company_id: UUID):
+    db_product = Product(**product.model_dump(exclude={'company_id', 'user_id'}), user_id=user_id, company_id=company_id)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
@@ -138,8 +127,8 @@ def get_clients(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, com
         query = query.filter(Client.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_client(db: Session, client: PydanticClient, user_id: UUID):
-    db_client = Client(**client.model_dump(exclude_none=True), user_id=user_id)
+def create_client(db: Session, client: PydanticClient, user_id: UUID, company_id: UUID):
+    db_client = Client(**client.model_dump(exclude={'company_id', 'user_id'}), user_id=user_id, company_id=company_id)
     db.add(db_client)
     db.commit()
     db.refresh(db_client)
