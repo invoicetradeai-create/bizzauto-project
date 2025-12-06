@@ -108,6 +108,85 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
             # --- Define Tool with Context Binding ---
             def get_product_details(product_name: str | None = None, product_id: str | None = None):
                 """
+                Use this tool to search for a product in the inventory to check price and stock.
+                Args:
+                    product_name: The name of the item the customer is asking about.
+                    product_id: Optional ID if provided.
+                """
+                if not company_id:
+                    return {"status": "ERROR: No Company ID identified for this chat."}
+                
+                return _get_product_details_logic(user_id, company_id, product_name, product_id)
+
+            tools_list = [get_product_details]
+            
+            # --- Dynamic System Instructions ---
+            db = SessionLocal()
+            company_name = "BizzAuto"
+            try:
+                if company_id:
+                    company = crud.get_company(db, company_id=company_id)
+                    if company and company.name:
+                        company_name = company.name
+            finally:
+                db.close()
+
+            # --- HUMANIZED PROMPT (Booking line removed) ---
+            tenant_system_instructions = f"""
+            You are a friendly customer support representative for {company_name}.
+            Your name is Sarah. You are chatting with a customer on WhatsApp.
+
+            GOAL:
+            Answer questions naturally and helpfully using the provided tools. Be conversational, not robotic.
+
+            TONE & STYLE GUIDELINES:
+            1. **Be Human:** Use phrases like "Let me check that for you," "Good news!", or "Oh, sorry about that."
+            2. **Use Emojis:** Use friendly emojis occasionally (e.g., 👋, 🚗, ✅, 🔧).
+            3. **Short & Sweet:** Keep messages easy to read on a phone screen.
+
+            RULES FOR TOOLS:
+            1. When asked about a product price or stock, YOU MUST use the `get_product_details` tool.
+            2. **If Found (AVAILABLE):**
+               - Say something like: "Yes, I checked and we have the **{{product_name}}** in stock! ✅ It's listed at **[Price]**."
+               (Do NOT ask them to book or reserve it unless they explicitly ask).
+            3. **If Not Found (NOT AVAILABLE / Out of Stock):**
+               - Say: "I'm sorry, I just checked our inventory and it looks like we're out of stock for that item right now. 😔"
+            4. **General Chat:** Reply naturally to Hi/Hello/Thanks.
+            """
+
+            # Initialize Model
+            model = genai.GenerativeModel(
+                model_name='gemini-2.0-flash',
+                system_instruction=tenant_system_instructions,
+                tools=tools_list
+            )
+            
+            chat_sessions[phone_number] = model.start_chat(
+                enable_automatic_function_calling=True
+            )
+        
+        chat = chat_sessions[phone_number]
+
+        # 2. Run Gemini
+        response = await asyncio.to_thread(chat.send_message, message)
+        
+        return response.text if response and response.text else "Sorry, I didn't catch that. Could you say it again?"
+
+    except Exception as e:
+        print(f"❌ ERROR inside run_whatsapp_agent for {phone_number}: {e}")
+        traceback.print_exc()
+        return "System is currently unavailable. Please try again later."
+    """
+    Async wrapper that handles the chat logic.
+    Ensures 'company_id' is passed to the tool for isolation.
+    """
+    try:
+        # 1. Create Chat Session if not exists
+        if phone_number not in chat_sessions:
+            
+            # --- Define Tool with Context Binding ---
+            def get_product_details(product_name: str | None = None, product_id: str | None = None):
+                """
                 Use this to find product price and availability.
                 Args:
                     product_name: Name of the item (e.g., 'Tyre', 'Oil').

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import type { DailyExpense, PaymentMethod, NewExpenseForm } from './types/index';
+import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -69,6 +70,27 @@ export const DailyExpensesContent: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // --- Validation ---
+    if (!form.description.trim()) {
+      toast.error("Description cannot be empty.");
+      return;
+    }
+    if (!form.category) {
+      toast.error("Please select a category.");
+      return;
+    }
+    const amount = parseFloat(form.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Amount must be a positive number.");
+      return;
+    }
+    if (!form.paymentMethod) {
+      toast.error("Please select a payment method.");
+      return;
+    }
+    // --- End Validation ---
+
     try {
       const fd = new FormData();
       fd.append('date', form.date.toISOString());
@@ -84,9 +106,10 @@ export const DailyExpensesContent: React.FC = () => {
       setExpenses(prev => [added, ...prev]);
       setForm({ date: new Date(), amount: '', category: '', paymentMethod: '', description: '', receiptFile: null, clientPhoneNumber: '' });
       await fetchSummary();
+      toast.success("Expense added successfully!"); // Add success toast
     } catch (err) {
       console.error(err);
-      alert('Failed to add expense');
+      toast.error(`Failed to add expense: ${err instanceof Error ? err.message : String(err)}`); // Use toast for error
     }
   };
 
@@ -143,56 +166,48 @@ export const DailyExpensesContent: React.FC = () => {
     }
 
     setSendingWhatsApp(true);
-    try {
-      // Using the 'expense_report' template
-      const messageData = {
-        type: "template",
-        template: {
-          name: "expense_report",
-          language: { code: "en" },
-          components: [{
-            type: "body",
-            parameters: [
-              { type: "text", text: form.category || 'N/A' },
-              { type: "text", text: `Rs ${form.amount}` },
-              { type: "text", text: form.paymentMethod || 'N/A' },
-              { type: "text", text: form.date.toLocaleDateString() },
-              { type: "text", text: form.description || 'N/A' }
-            ]
-          }]
+    // --- Frontend Requirement 1: Console log the exact data payload being sent to the backend ---
+    console.log("🚀 Sending WhatsApp payload to backend:", payload);
+    // --- End Frontend Requirement 1 ---
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/meta_whatsapp/send-meta-whatsapp';
+    try { // The try block was already here, just adding console logs in catch
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+            // --- Frontend Requirement 2: Log Raw Response Status and Response Text ---
+            console.error('Raw WhatsApp API Error - Status:', res.status);
+            const errorText = await res.text();
+            console.error('Raw WhatsApp API Error - Response Text:', errorText);
+            // --- End Frontend Requirement 2 ---
+
+            // Try to parse JSON, fall back to raw text if parsing fails
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch (jsonError) {
+                errorData = { message: errorText }; // Use raw text if not valid JSON
+            }
+            throw new Error(errorData.detail || errorData.message || errorData.error || 'Failed to send WhatsApp message');
         }
-      };
 
-      const payload = {
-        to: formattedPhone,
-        message_data: messageData,
-      };
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/meta_whatsapp/send-meta-whatsapp';
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const responseData = await res.json();
-      if (!res.ok) {
-        console.error('WhatsApp API Error:', responseData);
-        throw new Error(responseData.detail || responseData.message || responseData.error || 'Failed to send WhatsApp message');
-      }
-
-      alert('Expense report sent via WhatsApp successfully!');
+        const responseData = await res.json();
+        alert('Expense report sent via WhatsApp successfully!');
     } catch (err) {
-      console.error('Error sending WhatsApp message:', err);
-      alert(`Failed to send WhatsApp message: ${err instanceof Error ? err.message : String(err)}`);
+        console.error('Error sending WhatsApp message:', err);
+        alert(`Failed to send WhatsApp message: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      setSendingWhatsApp(false);
+        setSendingWhatsApp(false);
     }
   };
 

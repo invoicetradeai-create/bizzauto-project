@@ -394,7 +394,17 @@ def get_expense(db: Session, expense_id: UUID):
 def get_expenses(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
     return db.query(Expense).filter(Expense.user_id == user_id).offset(skip).limit(limit).all()
 
+# crud.py mein verify karein
 def create_expense(db: Session, expense: PydanticExpense, user_id: UUID):
+    # 'user_id' ko dump se exclude karna BOHT ZAROORI hai
+    expense_data = expense.model_dump(exclude={'user_id'}, exclude_none=True)
+    
+    db_expense = Expense(**expense_data, user_id=user_id)
+    db.add(db_expense)
+    db.commit()
+    db.refresh(db_expense)
+    return db_expense
+
     db_expense = Expense(**expense.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_expense)
     db.commit()
