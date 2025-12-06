@@ -8,13 +8,13 @@ from models import User as PydanticUser
 from crud import (
     get_user, get_users, create_user, update_user, delete_user
 )
-from dependencies import get_current_user, set_rls_context
+from dependencies import get_current_user
 from sql_models import User
 
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticUser])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context)):
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = get_users(db, skip=skip, limit=limit)
     return users
 

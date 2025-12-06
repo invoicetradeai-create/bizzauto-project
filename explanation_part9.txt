@@ -1,0 +1,11 @@
+I have applied the necessary fix to `bizzauto_api/routers/api/users.py`.
+
+Specifically, I have:
+*   Added `user: User = Depends(get_current_user)` to the `read_users` function signature.
+*   Modified the `get_users` call within `read_users` to pass `user_id=user.id` as an argument.
+
+This change should resolve the `405 Method Not Allowed` error for `GET /api/users`.
+
+Please restart your backend application (if it's running locally) or redeploy it (if it's on Render) and then retest this API endpoint. You should now be able to successfully perform `GET` requests on it.
+
+Let me know if you encounter any further issues.
