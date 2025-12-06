@@ -16,7 +16,7 @@ class Company(Base):
     email = Column(String, unique=True, index=True, nullable=True)
     phone = Column(String, nullable=True)
     address = Column(String, nullable=True)
-    phone_number_id = Column(String, nullable=True, index=True) # Added for WhatsApp multi-tenancy
+    phone_number_id = Column(String, unique=True, nullable=True) # Added for WhatsApp multi-tenancy
 
     products = relationship("Product", back_populates="company")
     clients = relationship("Client", back_populates="company")

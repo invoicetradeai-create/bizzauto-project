@@ -19,6 +19,8 @@ from pydantic import BaseModel
 from typing import Any
 from datetime import datetime
 from dependencies import get_current_user
+from crud import get_company_by_phone_number_id # Added import
+from sql_models import Company # Moved from bottom
 
 router = APIRouter()
 
@@ -64,23 +66,21 @@ async def process_whatsapp_message(entry_data: dict):
                             
                             db = SessionLocal()
                             try:
-                                from sql_models import Company
-                                
                                 if not received_phone_number_id:
                                     print(f"⚠️  No phone_number_id in webhook payload. Ignoring message.")
-                                    continue
+                                    return # Stop processing this message
 
-                                company = db.query(Company).filter(Company.phone_number_id == received_phone_number_id).first()
+                                company = get_company_by_phone_number_id(db, received_phone_number_id)
 
                                 if not company:
-                                    print(f"⚠️  No company found for phone_number_id: {received_phone_number_id}. This might be a lead. Proceeding with user_id=None.")
-                                    # company_id_for_log remains None
+                                    print(f"⚠️  No company found for phone_number_id: {received_phone_number_id}. Stopping processing.")
+                                    return # Stop processing this message
                                 else:
                                     company_id_for_log = company.id
                                     if company.users:
                                         user_id_for_log = company.users[0].id
                                     else:
-                                        print(f"⚠️ Company {company.id} has no users, but continuing to send Auto-Reply.")
+                                        print(f"⚠️ Company {company.id} has no users. User ID for log set to None.")
                                     
                                 print(f"✅ Found context: User ID {user_id_for_log}, Company ID {company_id_for_log}")
 

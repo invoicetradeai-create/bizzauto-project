@@ -27,9 +27,9 @@ def read_client(client_id: UUID, db: Session = Depends(set_rls_context)):
         raise HTTPException(status_code=404, detail="Client not found")
     return db_client
 
-@router.post("/", response_model=PydanticClient)
-def create_client_route(client: PydanticClient, db: Session = Depends(set_rls_context), user: User = Depends(get_current_user)):
-    return create_client(db=db, client=client, user_id=user.id)
+# @router.post("/", response_model=PydanticClient)
+# def create_client_route(client: PydanticClient, db: Session = Depends(set_rls_context), user: User = Depends(get_current_user)):
+#     return create_client(db=db, client=client, user_id=user.id)
 
 @router.put("/{client_id}", response_model=PydanticClient)
 def update_client_route(client_id: UUID, client: PydanticClient, db: Session = Depends(set_rls_context)):

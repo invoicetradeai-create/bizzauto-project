@@ -36,6 +36,9 @@ def create_company(db: Session, company: PydanticCompany):
     db.refresh(db_company)
     return db_company
 
+def get_company_by_phone_number_id(db: Session, phone_number_id: str):
+    return db.query(Company).filter(Company.phone_number_id == phone_number_id).first()
+
 def update_company(db: Session, company_id: UUID, company: PydanticCompany):
     db_company = db.query(Company).filter(Company.id == company_id).first()
     if db_company:
@@ -55,14 +58,20 @@ def delete_company(db: Session, company_id: UUID):
 def get_product(db: Session, product_id: UUID, user_id: UUID, company_id: UUID):
     return db.query(Product).filter(Product.id == product_id, Product.user_id == user_id, Product.company_id == company_id).first()
 
-def get_product_by_name(db: Session, name: str, user_id: UUID = None, company_id: UUID = None):
+def get_product_by_name(db: Session, name: str, company_id: UUID, user_id: UUID = None):
+    """
+    Retrieves a product by name, strictly filtered by company_id.
+    Optionally filters by user_id if provided.
+    """
     print(f"--- CRUD:get_product_by_name ---")
-    print(f"Attempting to find product by name: '{name}' for user_id: '{user_id}' and company_id: '{company_id}'")
-    query = db.query(Product).filter(Product.name.ilike(f"%{name}%"))
+    print(f"Attempting to find product by name: '{name}' for company_id: '{company_id}' (user_id: '{user_id}')")
+    
+    query = db.query(Product).filter(
+        Product.company_id == company_id,
+        Product.name.ilike(f"%{name}%")
+    )
     if user_id:
         query = query.filter(Product.user_id == user_id)
-    if company_id:
-        query = query.filter(Product.company_id == company_id)
     
     result = query.first()
     print(f"Query result: {'Found product' if result else 'No product found'}")
