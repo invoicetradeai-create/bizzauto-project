@@ -1,64 +1,82 @@
 import google.generativeai as genai
 import os
 import asyncio
+import traceback
+from uuid import UUID
 from database import SessionLocal
 import crud
-from uuid import UUID
-import json
-import traceback # Import traceback for detailed error logging
 
 # ============================
-# 1. Product Lookup Tool (Internal Logic)
+# 1. Product Lookup Tool (Strict Isolation Logic)
 # ============================
 def _get_product_details_logic(
     user_id: UUID | None,
     company_id: UUID | None,
     product_name: str | None = None,
-    product_id: int | None = None
+    product_id: str | None = None # Changed to str to handle UUID input from AI
 ) -> dict:
     """
-    Internal logic to get product details with user_id and company_id filtering.
+    Internal logic to get product details.
+    STRICT RULE: company_id is MANDATORY. Data is filtered by this ID.
     """
-    print(f"--- AGENT:_get_product_details_logic ---")
-    print(f"Received call for user_id: '{user_id}', company_id: '{company_id}', product_name: '{product_name}', product_id: '{product_id}'")
-    print(f"--------------------------------------")
+    print(f"--- AGENT: Product Lookup ---")
+    print(f"Context -> User: {user_id} | Company: {company_id}")
+    print(f"Query   -> Name: {product_name} | ID: {product_id}")
+    
+    # 1. Strict Isolation Check
+    if not company_id:
+        print("❌ ERROR: Missing Company ID. Cannot perform isolated search.")
+        return {"status": "NOT AVAILABLE (System Error: Company context missing)"}
+
     db = SessionLocal()
     try:
         product = None
+        
+        # 2. Fetch Product (Scoped to Company)
         if product_id:
-            # Ensure product_id is correctly converted if coming from a non-UUID source
-            try:
-                # Note: Assuming product_id passed from LLM is UUID string or int. 
-                # If int, it might be wrong if ID is UUID. 
-                # But existing code used UUID(str(product_id)).
-                product = crud.get_product(db, product_id=UUID(str(product_id)), user_id=user_id, company_id=company_id)
-            except ValueError:
-                return {"error": "Invalid product_id format"}
+            # Convert string to UUID if necessary
+            p_uuid = UUID(product_id) if isinstance(product_id, str) else product_id
+            product = crud.get_product(db, product_id=p_uuid, user_id=user_id, company_id=company_id)
+        
         elif product_name:
-            product = crud.get_product_by_name(db, name=product_name, user_id=user_id, company_id=company_id)
+            # THIS IS THE KEY: We pass company_id to the CRUD layer
+            product = crud.get_product_by_name(db, name=product_name, company_id=company_id, user_id=user_id)
+        
         else:
-            return {"error": "Provide product_name or product_id"}
+            return {"status": "NOT AVAILABLE (Please provide product_name or product_id)"}
 
+        # 3. Handle 'Not Found'
         if not product:
-            return {"error": "Product not found"}
+            return {"status": "NOT AVAILABLE (Product not found in this company's inventory)"}
             
-
-
-        return {
+        # 4. Check Stock & Availability
+        stock_quantity = getattr(product, 'stock_quantity', 0)
+        sale_price = getattr(product, 'sale_price', 0.0)
+        
+        product_details = {
             "name": product.name,
             "sku": product.sku,
             "category": product.category,
-            "purchase_price": float(product.purchase_price),
-            "sale_price": float(product.sale_price),
-            "stock_quantity": product.stock_quantity,
-            "low_stock_alert": product.low_stock_alert,
+            "sale_price": float(sale_price),
+            "stock_quantity": stock_quantity,
             "unit": product.unit,
         }
 
+        if stock_quantity <= 0:
+            return {
+                "status": "NOT AVAILABLE (Out of Stock)", 
+                "details": product_details
+            }
+        else:
+            return {
+                "status": f"AVAILABLE. Price: {sale_price:.2f}. Details: {product.name} is in stock.", 
+                "details": product_details
+            }
+
     except Exception as e:
-        print(f"ERROR in get_product_details: {e}")
-        traceback.print_exc() # Add full traceback
-        return {"error": f"Error fetching product: {str(e)}"}
+        print(f"❌ ERROR in _get_product_details_logic: {e}")
+        traceback.print_exc()
+        return {"status": f"ERROR (System error during lookup)"}
 
     finally:
         db.close()
@@ -67,50 +85,71 @@ def _get_product_details_logic(
 # Configure Generative Model
 # ============================
 api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key:
+    print("⚠️ WARNING: GEMINI_API_KEY is not set.")
+
 genai.configure(api_key=api_key)
 
-# System instructions
-system_instructions = """
-You are a helpful and passive assistant for BizzAuto, a company that sells all kinds of wholesale and retailer products.
-Your ONLY job is to answer direct questions from users.
-- DO NOT initiate conversations or send proactive messages.
-- If a user asks about a specific product, ALWAYS use the `get_product_details` tool to check for it.
-- If the tool finds the product and it is in stock (stock_quantity > 0), reply with "Yes, we have [product name]! The price is [sale_price]."
-- If the tool finds the product but it is out of stock (stock_quantity <= 0), reply with "Sorry, [product name] is currently out of stock."
-- If the tool returns "Product not found", reply with "Sorry, I couldn't find a product by that name."
-- For any other questions, provide a short and helpful answer.
-- Keep all responses concise and to the point.
-"""
 
 
+# Session Store
 chat_sessions = {}
 
 # ============================
-# Runner Wrapper (Async Fixed)
+# Agent Runner
 # ============================
 async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | None, company_id: UUID | None) -> str:
     """
-    Async wrapper that handles the chat logic
+    Async wrapper that handles the chat logic.
+    Ensures 'company_id' is passed to the tool for isolation.
     """
     try:
         # 1. Create Chat Session if not exists
         if phone_number not in chat_sessions:
             
-            # Create a tool bound to this user
-            def get_product_details(product_name: str | None = None, product_id: int | None = None):
+            # --- Define Tool with Context Binding ---
+            def get_product_details(product_name: str | None = None, product_id: str | None = None):
                 """
-                Use this function to get the details of a product, such as its price and availability.
+                Use this to find product price and availability.
+                Args:
+                    product_name: Name of the item (e.g., 'Tyre', 'Oil').
+                    product_id: Optional ID.
                 """
-                if not user_id or not company_id:
-                    return {"error": "User or company context missing. Cannot look up products for unknown leads."}
+                # Strict Context Check before calling logic
+                if not company_id:
+                    return {"status": "ERROR: No Company ID identified for this chat."}
+                
                 return _get_product_details_logic(user_id, company_id, product_name, product_id)
 
             tools_list = [get_product_details]
             
-            # Initialize Model per session to bind the specific tool
+            # --- Dynamic System Instructions (Tenant-Specific) ---
+            db = SessionLocal()
+            company_name = "BizzAuto" # Default company name
+            try:
+                if company_id:
+                    company = crud.get_company(db, company_id=company_id)
+                    if company and company.name:
+                        company_name = company.name
+            finally:
+                db.close()
+
+            tenant_system_instructions = f"""
+You are a helpful assistant for {company_name}.
+Your goal is to answer questions strictly based on the provided tools.
+
+RULES:
+1. If a user asks about a product, YOU MUST use the `get_product_details` tool.
+2. Do not guess product prices or availability. Rely ONLY on the tool output.
+3. Check the tool's 'status':
+   - If 'NOT AVAILABLE' (Out of Stock or Not Found): Politely tell the user the product is not available.
+   - If 'AVAILABLE': Say "Yes, this product is available", mention the price, and ask if they want to order.
+4. Keep responses concise and professional.
+"""
+            # Initialize Model
             model = genai.GenerativeModel(
                 model_name='gemini-2.0-flash',
-                system_instruction=system_instructions,
+                system_instruction=tenant_system_instructions, # Use dynamic instructions
                 tools=tools_list
             )
             
@@ -120,22 +159,13 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
         
         chat = chat_sessions[phone_number]
 
-        # 2. Run the blocking Gemini call in a thread to prevent blocking FastAPI
-        # This fixes the "await" error while keeping the server responsive
+        # 2. Run Gemini (Non-blocking)
+        # Note: We pass the message and let the model decide to call the tool
         response = await asyncio.to_thread(chat.send_message, message)
         
-        # Ensure that response.text is always a string, even if empty or None
-        return response.text if response and response.text is not None else ""
+        return response.text if response and response.text else "Sorry, I didn't understand that."
 
     except Exception as e:
-        # Log the actual error for debugging
-        print(f"ERROR inside run_whatsapp_agent for phone {phone_number}: {e}")
-        traceback.print_exc() # Add full traceback
-        
-        # If the model name is wrong, catch it here
-        if "404" in str(e) and "models/" in str(e):
-            available_models = [m.name for m in genai.list_models()]
-            print(f"DEBUG: Available models: {', '.join(available_models)}")
-            return "System Error: AI Model (gemini-2.0-flash) not found or API key invalid. Please contact admin and check logs for available models."
-            
-        return "Sorry, I'm having trouble connecting to the system right now. 🔧"
+        print(f"❌ ERROR inside run_whatsapp_agent for {phone_number}: {e}")
+        traceback.print_exc()
+        return "System is currently unavailable. Please try again later."

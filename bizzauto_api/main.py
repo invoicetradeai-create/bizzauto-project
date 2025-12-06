@@ -52,7 +52,7 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",
     "https://bizzauto-project.onrender.com",
-    "https://YOUR_FRONTEND_DOMAIN.vercel.app",
+    "https://www.bizzauto.com",
 ]
 
 # ✅ Add CORS middleware
