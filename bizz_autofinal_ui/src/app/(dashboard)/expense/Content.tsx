@@ -157,57 +157,51 @@ export const DailyExpensesContent: React.FC = () => {
     return phone.replace(/[^0-9]/g, '').replace(/^0+/, '');
   }
 
-  const handleSendExpenseReportWhatsApp = async () => {
-    const formattedPhone = formatPhoneNumber(form.clientPhoneNumber || '');
+const handleSendExpenseReportWhatsApp = async (expense: any) => {
+    try {
+      // 1. DEFINE PAYLOAD FIRST (Before using it)
+      const payload = {
+        title: "New Expense",
+        amount: Number(expense.amount),
+        category: expense.category,
+        payment_method: expense.payment_method,
+        description: expense.description || "No description",
+        date: new Date(expense.date).toISOString().split('T')[0],
+        phone: expense.phone || "923001234567" // Fallback if phone is missing
+      };
 
-    if (!formattedPhone || formattedPhone.length < 11) {
-      alert("Please enter a valid client WhatsApp number in international format");
-      return;
-    }
+      setSendingWhatsApp(true);
 
-    setSendingWhatsApp(true);
-    // --- Frontend Requirement 1: Console log the exact data payload being sent to the backend ---
-    console.log("🚀 Sending WhatsApp payload to backend:", payload);
-    // --- End Frontend Requirement 1 ---
+      // 2. NOW LOG IT (This works because 'payload' is defined above)
+      console.log("🚀 Sending WhatsApp payload to backend:", payload);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // 3. SEND REQUEST
+      const response = await apiClient.post("/expenses/send-whatsapp", payload, {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/meta_whatsapp/send-meta-whatsapp';
-    try { // The try block was already here, just adding console logs in catch
-        const res = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(payload),
-        });
+      console.log("✅ Backend Response:", response.data);
+      alert("WhatsApp message sent successfully!");
 
-        if (!res.ok) {
-            // --- Frontend Requirement 2: Log Raw Response Status and Response Text ---
-            console.error('Raw WhatsApp API Error - Status:', res.status);
-            const errorText = await res.text();
-            console.error('Raw WhatsApp API Error - Response Text:', errorText);
-            // --- End Frontend Requirement 2 ---
-
-            // Try to parse JSON, fall back to raw text if parsing fails
-            let errorData;
-            try {
-                errorData = JSON.parse(errorText);
-            } catch (jsonError) {
-                errorData = { message: errorText }; // Use raw text if not valid JSON
-            }
-            throw new Error(errorData.detail || errorData.message || errorData.error || 'Failed to send WhatsApp message');
-        }
-
-        const responseData = await res.json();
-        alert('Expense report sent via WhatsApp successfully!');
-    } catch (err) {
-        console.error('Error sending WhatsApp message:', err);
-        alert(`Failed to send WhatsApp message: ${err instanceof Error ? err.message : String(err)}`);
+    } catch (error: any) {
+      console.error("❌ WhatsApp Error Full Object:", error);
+      
+      if (error.response) {
+        // Server responded with an error code (400, 500, etc.)
+        console.error("❌ Server Response Data:", error.response.data);
+        alert(`Failed: ${error.response.data.detail || "Server Error"}`);
+      } else if (error.request) {
+        // Request sent but no response
+        alert("Network Error: No response from server.");
+      } else {
+        alert(`Error: ${error.message}`);
+      }
     } finally {
-        setSendingWhatsApp(false);
+      setSendingWhatsApp(false);
     }
   };
 
