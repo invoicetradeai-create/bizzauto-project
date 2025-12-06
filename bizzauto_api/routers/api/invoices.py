@@ -14,9 +14,10 @@ from sql_models import User
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticInvoice])
-def read_invoices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    invoices = get_invoices(db, user_id=user.id, skip=skip, limit=limit)
-    return invoices
+@router.get("", response_model=List[PydanticInvoice])
+def read_invoices(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context), user: User = Depends(get_current_user)):
+    db_invoices = get_invoices(db, user_id=user.id, skip=skip, limit=limit)
+    return db_invoices
 
 @router.get("/{invoice_id}", response_model=PydanticInvoice)
 def read_invoice(invoice_id: UUID, db: Session = Depends(set_rls_context)):

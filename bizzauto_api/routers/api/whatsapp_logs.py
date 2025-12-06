@@ -14,6 +14,7 @@ from sql_models import User
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticWhatsappLog])
+@router.get("", response_model=List[PydanticWhatsappLog])
 def read_whatsapp_logs(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context), user: User = Depends(get_current_user)):
     whatsapp_logs = get_whatsapp_logs(db, user_id=user.id, skip=skip, limit=limit)
     return whatsapp_logs

@@ -1,0 +1,11 @@
+Okay, thank you for the clarification. If your backend API is now correctly running on `http://127.0.0.1:8000`, then your frontend application (`bizz_autofinal_ui`) needs to be configured to connect to that URL.
+
+To resolve this, you need to set the `NEXT_PUBLIC_API_URL` environment variable in your `bizz_autofinal_ui` project to `http://127.0.0.1:8000`.
+
+You can do this by creating a `.env.local` file in the `bizz_autofinal_ui` directory (i.e., `E:\bizzauto-work\bizzauto-project\bizz_autofinal_ui\.env.local`) with the following content:
+
+```
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+After creating this file, please restart your frontend development server for the changes to take effect.

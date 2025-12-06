@@ -15,6 +15,7 @@ from sql_models import User
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticClient])
+@router.get("", response_model=List[PydanticClient])
 def read_clients(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     clients = get_clients(db, user_id=user.id, skip=skip, limit=limit)
     return clients

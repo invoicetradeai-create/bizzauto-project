@@ -1,0 +1,13 @@
+The backend API (from `bizzauto_api/main.py`) is currently running on `http://127.0.0.1:49410`.
+
+Your frontend application (`bizz_autofinal_ui`) is attempting to connect to the API using the default URL `http://127.0.0.1:8000`, because the `NEXT_PUBLIC_API_URL` environment variable is not set. This mismatch is why your pages are not loading correctly.
+
+To resolve this, you need to set the `NEXT_PUBLIC_API_URL` environment variable in your `bizz_autofinal_ui` project to `http://127.0.0.1:49410`.
+
+You can do this by creating a `.env.local` file in the `bizz_autofinal_ui` directory (i.e., `E:\bizzauto-work\bizzauto-project\bizz_autofinal_ui\.env.local`) with the following content:
+
+```
+NEXT_PUBLIC_API_URL=http://127.0.0.1:49410
+```
+
+After creating this file, you will need to restart your frontend development server for the changes to take effect.
