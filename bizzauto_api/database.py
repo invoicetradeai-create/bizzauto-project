@@ -3,54 +3,73 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
-from dotenv import load_dotenv
 from supabase import create_client, Client
+from typing import Optional
 
-load_dotenv()
-
-# SQLAlchemy Database Configuration
+# --- SQLAlchemy Configuration (Optional) ---
 DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable not set.")
+engine = None
+SessionLocal = None
 
-# Use NullPool to disable client-side pooling.
-# This is critical when using Supabase's Transaction Pooler (port 6543 or pooler.supabase.com)
-# to prevent "MaxClientsInSessionMode" errors.
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    poolclass=NullPool
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+if DATABASE_URL:
+    try:
+        engine = create_engine(DATABASE_URL, pool_pre_ping=True, poolclass=NullPool)
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        print("✅ PostgreSQL database connected")
+    except Exception as e:
+        print(f"⚠️ PostgreSQL connection failed: {e}")
+        engine = None
+        SessionLocal = None
+else:
+    print("⚠️ DATABASE_URL not set - SQLAlchemy database features will be disabled.")
+
 Base = declarative_base()
 
-# Testing Database Configuration
-# Use an in-memory SQLite database for testing to ensure tests are isolated
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test.db")
-test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-TestBase = declarative_base() # A separate Base for test models if needed, or use main Base
-
 def get_db():
+    """Dependency to get a DB session. Raises an error if DB is not configured."""
+    if not SessionLocal:
+        raise RuntimeError("Database not configured. Please set the DATABASE_URL environment variable.")
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# Dependency for testing
+
+# --- Testing Database (SQLite) ---
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test.db")
+test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
 def get_test_db():
+    """Dependency for testing database."""
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# Supabase Configuration
+
+# --- Supabase Configuration (Optional) ---
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase: Optional[Client] = None
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("SUPABASE_URL and SUPABASE_KEY environment variables not set.")
+if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+        print("✅ Supabase client connected")
+    except Exception as e:
+        print(f"⚠️ Supabase connection failed: {e}")
+        supabase = None
+else:
+    print("⚠️ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set - Supabase features will be disabled.")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+def get_supabase() -> Client:
+    """
+    Dependency to get the Supabase client.
+    Raises a RuntimeError if Supabase is not configured.
+    """
+    if supabase is None:
+        raise RuntimeError("Supabase not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.")
+    return supabase

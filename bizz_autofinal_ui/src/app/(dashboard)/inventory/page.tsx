@@ -44,6 +44,7 @@ export default function InventoryPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null); // State for companyId
 
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -93,6 +94,18 @@ export default function InventoryPage() {
       setLoading(false);
     };
     fetchData();
+  }, []);
+
+  // ✅ Get companyId from localStorage or use fallback
+  useEffect(() => {
+    const storedCompanyId = localStorage.getItem("company_id");
+    if (storedCompanyId) {
+      setCompanyId(storedCompanyId);
+    } else {
+      // Use a test UUID if not found in localStorage as per user request
+      setCompanyId("550e8400-e29b-41d4-a716-446655440000");
+      console.warn("Company ID not found in localStorage, using test UUID.");
+    }
   }, []);
 
   // ✅ Handlers
@@ -171,20 +184,33 @@ export default function InventoryPage() {
     }
   };
 
-  const handleDelete = async (id?: string) => {
-    if (!id) return;
-    if (!confirm("Are you sure you want to delete this product?")) return;
-    try {
-      const response = await apiClient.delete(`${API_ENDPOINTS.products}/${id}`);
+      const handleDelete = async (id?: string) => {
+      if (!id) return;
+      if (!confirm("Are you sure you want to delete this product?")) return;
+      try {
+        const response = await apiClient.delete(`${API_ENDPOINTS.products}/${id}`);
+        fetchProducts();
+      } catch (err: any) {
+        alert(`Delete failed: ${err.response?.data?.detail || err.message}`);
+        console.error("Error deleting product:", err);
+      }
+    };
+  
+    // ✅ Function to refresh inventory data after OCR upload
+    const handleRefreshInventory = () => {
+      console.log("Invoice uploaded successfully, refreshing products...");
       fetchProducts();
-    } catch (err: any) {
-      alert(`Delete failed: ${err.response?.data?.detail || err.message}`);
-      console.error("Error deleting product:", err);
-    }
-  };
-
-  const filtered = products.filter(
-    (p) =>
+    };
+  
+    const handleOpenOcrUpload = () => {
+      if (!companyId) {
+        alert("Company ID not available. Please ensure you are logged in or company_id is set.");
+        return;
+      }
+      setShowOcrUpload(true);
+    };
+  
+    const filtered = products.filter(    (p) =>
       p.name?.toLowerCase().includes(search.toLowerCase()) ||
       p.sku?.toLowerCase().includes(search.toLowerCase()) ||
       p.category?.toLowerCase().includes(search.toLowerCase())
@@ -278,7 +304,7 @@ export default function InventoryPage() {
               <Plus className="w-4 h-4" /> Add New Product
             </button>
             <button
-              onClick={() => setShowOcrUpload(true)}
+              onClick={() => handleOpenOcrUpload()} // ✅ Call new handler
               className="bg-white hover:bg-gray-100 text-black border border-black px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold cursor-pointer transition duration-200 ease-in-out hover:shadow-md"
             >
               PDF Upload
@@ -404,7 +430,13 @@ export default function InventoryPage() {
             </div>
           </div>
         )}
-        {showOcrUpload && <OcrUploadCard onClose={() => setShowOcrUpload(false)} />}
+        {showOcrUpload && companyId && (
+          <OcrUploadCard 
+            companyId={companyId} 
+            onClose={() => setShowOcrUpload(false)}
+            onUploadSuccess={handleRefreshInventory}
+          />
+        )}
       </div>
     </div>
   );

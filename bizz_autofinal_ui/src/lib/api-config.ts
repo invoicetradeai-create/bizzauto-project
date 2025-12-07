@@ -3,7 +3,7 @@ export const API_ENDPOINTS = {
   clients: '/api/clients',
   companies: '/api/companies',
   products: '/api/products',
-  invoices: '/api/invoices',
+  invoices: '/api/invoice-processing/invoices',
   expenses: '/api/expenses',
   whatsappLogs: '/api/whatsapp_logs',
   scheduledWhatsappMessages: '/api/scheduled-whatsapp-messages',

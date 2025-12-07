@@ -605,3 +605,108 @@ def delete_setting(db: Session, setting_id: UUID):
         db.delete(db_setting)
         db.commit()
     return db_setting
+
+# New functions for invoice processing
+
+from sqlalchemy.orm import joinedload
+from sqlalchemy import func
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_invoice_by_id(db: Session, invoice_id: UUID, company_id: UUID):
+    """
+    Retrieves a single invoice by its ID, ensuring it belongs to the specified company.
+    It eagerly loads the associated invoice items and the related product for each item.
+    """
+    return db.query(Invoice).options(
+        joinedload(Invoice.items).joinedload(InvoiceItem.product)
+    ).filter(Invoice.id == invoice_id, Invoice.company_id == company_id).first()
+
+def get_products_by_company(db: Session, company_id: UUID, skip: int = 0, limit: int = 100):
+    """
+    Retrieves all products for a given company.
+    """
+    return db.query(Product).filter(Product.company_id == company_id).offset(skip).limit(limit).all()
+
+def update_product_stock(db: Session, product_id: UUID, new_quantity: int, company_id: UUID):
+    """
+    Updates the stock quantity of a specific product, ensuring it belongs to the company.
+    """
+    db_product = db.query(Product).filter(Product.id == product_id, Product.company_id == company_id).first()
+    if db_product:
+        if new_quantity < 0:
+            logger.warning(f"Attempted to set negative stock for product {product_id}. Setting to 0 instead.")
+            new_quantity = 0
+        db_product.stock_quantity = new_quantity
+        db.commit()
+        db.refresh(db_product)
+    return db_product
+
+def find_product_by_name(db: Session, product_name: str, company_id: UUID):
+    """
+    Finds a product by name using a case-insensitive search for a specific company.
+    """
+    return db.query(Product).filter(
+        func.lower(Product.name) == func.lower(product_name),
+        Product.company_id == company_id
+    ).first()
+
+def create_invoice_from_ocr(db: Session, ocr_data: dict, company_id: UUID, user_id: UUID, client_id: UUID = None):
+    """
+    Creates an invoice, its items, and updates product stock from parsed OCR data.
+    This function should be executed within a transaction.
+    """
+    processed_items_count = 0
+    try:
+        # 1. Create the main invoice record
+        db_invoice = Invoice(
+            company_id=company_id,
+            user_id=user_id,
+            client_id=client_id,
+            invoice_date=ocr_data.get('invoice_date'),
+            total_amount=ocr_data.get('total_amount', 0.0),
+            payment_status='unpaid'
+        )
+        db.add(db_invoice)
+        db.flush() # Use flush to get the invoice ID before committing the transaction
+
+        # 2. Process line items
+        for item_data in ocr_data.get("line_items", []):
+            # Find the product in the database
+            product = find_product_by_name(db, item_data["name"], company_id)
+            
+            if not product:
+                logger.warning(f"Product not found: '{item_data['name']}'. Skipping item.")
+                continue
+
+            # Create the invoice item
+            db_invoice_item = InvoiceItem(
+                invoice_id=db_invoice.id,
+                product_id=product.id,
+                user_id=user_id,
+                quantity=item_data["quantity"],
+                price=item_data["price"],
+                total=item_data["total"]
+            )
+            db.add(db_invoice_item)
+
+            # 3. Update product stock
+            if product.stock_quantity is not None:
+                new_stock = product.stock_quantity - item_data["quantity"]
+                if new_stock < 0:
+                    logger.warning(f"Stock for product {product.name} ({product.id}) is going negative. Setting to 0.")
+                    new_stock = 0
+                product.stock_quantity = new_stock
+            
+            processed_items_count += 1
+        
+        db.commit()
+        db.refresh(db_invoice)
+        return db_invoice, processed_items_count
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating invoice from OCR data: {e}")
+        raise
+

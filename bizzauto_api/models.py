@@ -215,3 +215,42 @@ class Setting(BaseModel):
         if isinstance(value, (dict, list)):
             return json.dumps(value)
         return value
+
+class ProductStockUpdate(BaseModel):
+    product_id: UUID
+    company_id: UUID
+    new_quantity: int
+
+class InvoiceUploadResponse(BaseModel):
+    success: bool
+    invoice_id: UUID
+    message: str
+    items_processed: int
+    file_url: str
+
+class ProductResponse(BaseModel):
+    id: UUID
+    name: str
+    sku: Optional[str] = None
+    stock_quantity: int
+    sale_price: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+class InvoiceItemResponse(BaseModel):
+    product_name: str
+    quantity: int
+    price: float
+    total: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+class InvoiceDetailResponse(BaseModel):
+    id: UUID
+    company_id: UUID
+    invoice_date: date
+    total_amount: float
+    payment_status: str
+    items: List[InvoiceItemResponse]
+
+    model_config = ConfigDict(from_attributes=True)
