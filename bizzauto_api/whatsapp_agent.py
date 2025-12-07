@@ -5,6 +5,7 @@ import traceback
 from uuid import UUID
 from database import SessionLocal
 import crud
+from dotenv import load_dotenv
 
 # ============================
 # 1. Product Lookup Tool (Strict Isolation Logic)
@@ -101,10 +102,18 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
     Async wrapper that handles the chat logic.
     Ensures 'company_id' is passed to the tool for isolation.
     """
-    # Critical Check for API Key
+    # Critical Check for API Key (with Reload attempt)
+    global api_key
     if not api_key:
-        print("❌ ERROR: GEMINI_API_KEY not found in environment.")
-        return "Service Configuration Error: AI API Key is missing. Please check server logs."
+        print("⚠️ GEMINI_API_KEY not set globally. Attempting to reload from environment...")
+        load_dotenv()
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            genai.configure(api_key=api_key)
+            print("✅ GEMINI_API_KEY recovered from environment.")
+        else:
+            print("❌ ERROR: GEMINI_API_KEY not found in environment even after reload.")
+            return "Service Configuration Error: AI API Key is missing. Please check server logs."
 
     try:
         # 1. Create Chat Session if not exists
