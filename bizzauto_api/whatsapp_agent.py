@@ -2,55 +2,73 @@ import google.generativeai as genai
 import os
 import asyncio
 import traceback
+import logging
+from pathlib import Path
 from uuid import UUID
+from dotenv import load_dotenv
 from database import SessionLocal
 import crud
-from dotenv import load_dotenv
 
 # ============================
-# 1. Product Lookup Tool (Strict Isolation Logic)
+# Configure Logging & Env
+# ============================
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Explicitly load .env from the same directory
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+    logger.info(f"✅ [WhatsApp Agent] Loaded .env from {env_path}")
+else:
+    logger.warning(f"⚠️ [WhatsApp Agent] .env file not found at {env_path}")
+
+api_key = os.environ.get("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
+    logger.info("✅ [WhatsApp Agent] Gemini API Configured")
+else:
+    logger.error("❌ [WhatsApp Agent] GEMINI_API_KEY not found in environment!")
+
+# Session Store
+chat_sessions = {}
+
+# ============================
+# 1. Product Lookup Tool
 # ============================
 def _get_product_details_logic(
     user_id: UUID | None,
     company_id: UUID | None,
     product_name: str | None = None,
-    product_id: str | None = None # Changed to str to handle UUID input from AI
+    product_id: str | None = None
 ) -> dict:
     """
     Internal logic to get product details.
     STRICT RULE: company_id is MANDATORY. Data is filtered by this ID.
     """
-    print(f"--- AGENT: Product Lookup ---")
-    print(f"Context -> User: {user_id} | Company: {company_id}")
-    print(f"Query   -> Name: {product_name} | ID: {product_id}")
+    logger.info(f"--- AGENT: Product Lookup --- Context -> User: {user_id} | Company: {company_id} | Query: {product_name} / {product_id}")
     
-    # 1. Strict Isolation Check
     if not company_id:
-        print("❌ ERROR: Missing Company ID. Cannot perform isolated search.")
+        logger.error("❌ ERROR: Missing Company ID. Cannot perform isolated search.")
         return {"status": "NOT AVAILABLE (System Error: Company context missing)"}
 
     db = SessionLocal()
     try:
         product = None
         
-        # 2. Fetch Product (Scoped to Company)
         if product_id:
-            # Convert string to UUID if necessary
             p_uuid = UUID(product_id) if isinstance(product_id, str) else product_id
             product = crud.get_product(db, product_id=p_uuid, user_id=user_id, company_id=company_id)
         
         elif product_name:
-            # THIS IS THE KEY: We pass company_id to the CRUD layer
             product = crud.get_product_by_name(db, name=product_name, company_id=company_id, user_id=user_id)
         
         else:
             return {"status": "NOT AVAILABLE (Please provide product_name or product_id)"}
 
-        # 3. Handle 'Not Found'
         if not product:
             return {"status": "NOT AVAILABLE (Product not found in this company's inventory)"}
             
-        # 4. Check Stock & Availability
         stock_quantity = getattr(product, 'stock_quantity', 0)
         sale_price = getattr(product, 'sale_price', 0.0)
         
@@ -75,24 +93,12 @@ def _get_product_details_logic(
             }
 
     except Exception as e:
-        print(f"❌ ERROR in _get_product_details_logic: {e}")
+        logger.error(f"❌ ERROR in _get_product_details_logic: {e}")
         traceback.print_exc()
         return {"status": f"ERROR (System error during lookup)"}
 
     finally:
         db.close()
-
-# ============================
-# Configure Generative Model
-# ============================
-api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    print("⚠️ WARNING: GEMINI_API_KEY is not set.")
-
-genai.configure(api_key=api_key)
-
-# Session Store
-chat_sessions = {}
 
 # ============================
 # Agent Runner
@@ -102,24 +108,23 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
     Async wrapper that handles the chat logic.
     Ensures 'company_id' is passed to the tool for isolation.
     """
-    # Critical Check for API Key (with Reload attempt)
+    # Reload API Key just in case
     global api_key
     if not api_key:
-        print("⚠️ GEMINI_API_KEY not set globally. Attempting to reload from environment...")
-        load_dotenv()
+        logger.warning("⚠️ GEMINI_API_KEY missing in global scope. Reloading from env...")
+        load_dotenv(dotenv_path=env_path, override=True)
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             genai.configure(api_key=api_key)
-            print("✅ GEMINI_API_KEY recovered from environment.")
+            logger.info("✅ GEMINI_API_KEY recovered.")
         else:
-            print("❌ ERROR: GEMINI_API_KEY not found in environment even after reload.")
-            return "Service Configuration Error: AI API Key is missing. Please check server logs."
+            logger.error("❌ CRITICAL: GEMINI_API_KEY still missing.")
+            return "⚠️ Service Error: AI configuration missing. Please contact support."
 
     try:
         # 1. Create Chat Session if not exists
         if phone_number not in chat_sessions:
             
-            # --- Define Tool with Context Binding ---
             def get_product_details(product_name: str | None = None, product_id: str | None = None):
                 """
                 Use this tool to search for a product in the inventory to check price and stock.
@@ -129,12 +134,11 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
                 """
                 if not company_id:
                     return {"status": "ERROR: No Company ID identified for this chat."}
-                
                 return _get_product_details_logic(user_id, company_id, product_name, product_id)
 
             tools_list = [get_product_details]
             
-            # --- Dynamic System Instructions ---
+            # Dynamic Instructions
             db = SessionLocal()
             company_name = "BizzAuto"
             try:
@@ -142,10 +146,11 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
                     company = crud.get_company(db, company_id=company_id)
                     if company and company.name:
                         company_name = company.name
+            except Exception as db_err:
+                logger.error(f"DB Error fetching company: {db_err}")
             finally:
                 db.close()
 
-            # --- HUMANIZED PROMPT (Booking line removed) ---
             tenant_system_instructions = f"""
             You are a friendly customer support representative for {company_name}.
             Your name is Sarah. You are chatting with a customer on WhatsApp.
@@ -168,7 +173,6 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
             4. **General Chat:** Reply naturally to Hi/Hello/Thanks.
             """
 
-            # Initialize Model
             model = genai.GenerativeModel(
                 model_name='gemini-2.0-flash',
                 system_instruction=tenant_system_instructions,
@@ -184,14 +188,14 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
         # 2. Run Gemini
         response = await asyncio.to_thread(chat.send_message, message)
         
-        print(f"🤖 Gemini Final Response Text: '{response.text}'")
         if not response.text:
-             print(f"⚠️ Response text is empty. Parts: {response.parts}")
+             logger.warning(f"⚠️ Empty response text. Parts: {response.parts}")
+             return "I'm having trouble finding the right words. Could you rephrase that?"
 
-        return response.text if response and response.text else "Sorry, I didn't catch that. Could you say it again?"
+        return response.text
 
     except Exception as e:
-        print(f"❌ ERROR inside run_whatsapp_agent for {phone_number}: {e}")
+        logger.error(f"❌ EXCEPTION in run_whatsapp_agent for {phone_number}: {e}")
         traceback.print_exc()
-        # DEBUG: Returning error detail to chat for diagnosis
-        return f"System is currently unavailable. Error: {str(e)}"
+        # DISTINCT ERROR MESSAGE TO VERIFY CODE UPDATE
+        return f"⚠️ SYSTEM ALERT: The AI Agent encountered an error: {str(e)}"
