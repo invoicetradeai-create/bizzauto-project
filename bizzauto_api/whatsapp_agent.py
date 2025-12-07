@@ -184,6 +184,10 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
         # 2. Run Gemini
         response = await asyncio.to_thread(chat.send_message, message)
         
+        print(f"🤖 Gemini Final Response Text: '{response.text}'")
+        if not response.text:
+             print(f"⚠️ Response text is empty. Parts: {response.parts}")
+
         return response.text if response and response.text else "Sorry, I didn't catch that. Could you say it again?"
 
     except Exception as e:
