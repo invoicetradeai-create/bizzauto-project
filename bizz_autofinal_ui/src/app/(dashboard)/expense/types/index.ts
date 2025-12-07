@@ -2,7 +2,7 @@
 export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Debit Card';
 
 export interface DailyExpense {
-    id: number;
+    id: string;
     date: string;
     description: string;
     category: string;

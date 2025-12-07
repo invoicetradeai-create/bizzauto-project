@@ -390,8 +390,10 @@ def delete_purchase_item(db: Session, purchase_item_id: UUID):
 
 def get_expense(db: Session, expense_id: UUID, user_id: UUID = None, company_id: UUID = None):
     query = db.query(Expense).filter(Expense.id == expense_id)
-    if user_id and company_id:
-        query = query.filter(Expense.user_id == user_id, Expense.company_id == company_id)
+    if company_id:
+        query = query.filter(Expense.company_id == company_id)
+    elif user_id:
+        query = query.filter(Expense.user_id == user_id)
     return query.first()
 
 def get_expenses(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, company_id: UUID = None):
@@ -414,8 +416,10 @@ def create_expense(db: Session, expense: PydanticExpense, user_id: UUID, company
 
 def update_expense(db: Session, expense_id: UUID, expense: PydanticExpense, user_id: UUID = None, company_id: UUID = None):
     query = db.query(Expense).filter(Expense.id == expense_id)
-    if user_id and company_id:
-        query = query.filter(Expense.user_id == user_id, Expense.company_id == company_id)
+    if company_id:
+        query = query.filter(Expense.company_id == company_id)
+    elif user_id:
+        query = query.filter(Expense.user_id == user_id)
     db_expense = query.first()
     if db_expense:
         for key, value in expense.model_dump(exclude_unset=True).items():
@@ -426,8 +430,10 @@ def update_expense(db: Session, expense_id: UUID, expense: PydanticExpense, user
 
 def delete_expense(db: Session, expense_id: UUID, user_id: UUID = None, company_id: UUID = None):
     query = db.query(Expense).filter(Expense.id == expense_id)
-    if user_id and company_id:
-        query = query.filter(Expense.user_id == user_id, Expense.company_id == company_id)
+    if company_id:
+        query = query.filter(Expense.company_id == company_id)
+    elif user_id:
+        query = query.filter(Expense.user_id == user_id)
     db_expense = query.first()
     if db_expense:
         db.delete(db_expense)

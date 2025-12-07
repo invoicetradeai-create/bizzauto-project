@@ -72,17 +72,19 @@ def set_rls_context(user: User = Depends(get_current_user), db: Session = Depend
     import json
     from sqlalchemy import text
     
-    # Construct claims object with 'sub' (subject) only
-    # We remove 'company_id' to disable the permissive 'Tenant isolation' policy
-    # and enforce strict 'User isolation' via user_isolation_policy.
+    # Construct claims object with 'sub' (subject) and 'company_id'
+    # We include 'company_id' to enable 'Tenant isolation' policies
     claims = json.dumps({
-        "sub": str(user.id)
+        "sub": str(user.id),
+        "company_id": str(user.company_id) if user.company_id else None
     })
     
     # Set the claims for auth.uid() and auth.jwt()
     db.execute(text("SET request.jwt.claims = :claims"), {"claims": claims})
     
-    # Set app.current_user_id for legacy policy support (since we couldn't update policies)
+    # Set app.current_user_id and app.current_company_id
     db.execute(text("SET app.current_user_id = :user_id"), {"user_id": str(user.id)})
+    if user.company_id:
+        db.execute(text("SET app.current_company_id = :company_id"), {"company_id": str(user.company_id)})
     
     return db

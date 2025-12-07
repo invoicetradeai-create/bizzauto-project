@@ -51,9 +51,28 @@ export const NavigationContent = ({ setOpen }: { setOpen?: (open: boolean) => vo
       }
 
       try {
-        const userRes = await apiClient.get<UserType>(`/api/users/${userId}`);
-        if (userRes.data) {
-          const user = userRes.data;
+        // Get the session token directly to ensure authentication
+        const { data: { session } } = await import("@/lib/supabaseClient").then(mod => mod.supabase.auth.getSession());
+        const token = session?.access_token;
+
+        if (!token) {
+          console.warn("No session token available, skipping fetch");
+          return;
+        }
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${userId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const user: UserType = await response.json();
+        if (user) {
           setUserName(user.full_name);
           setUserEmail(user.email);
           setAvatarLetter(user.full_name.charAt(0).toUpperCase());

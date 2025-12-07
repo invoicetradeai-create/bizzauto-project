@@ -152,7 +152,7 @@ export const DailyExpensesContent: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense?')) return;
     try {
       const response = await apiClient.delete(`/api/expenses/${id}`);

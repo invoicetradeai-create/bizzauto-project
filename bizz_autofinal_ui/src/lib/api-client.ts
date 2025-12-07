@@ -12,12 +12,17 @@ const apiClient = axios.create({
 
 import { supabase } from "@/lib/supabaseClient";
 
-apiClient.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    config.headers["Authorization"] = `Bearer ${session.access_token}`;
+apiClient.interceptors.request.use(
+  async (config) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      config.headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
 export { apiClient };
