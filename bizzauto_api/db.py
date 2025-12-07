@@ -1,9 +1,23 @@
 import os
 from supabase import create_client, Client
-from dotenv import load_dotenv
+from typing import Optional
 
-load_dotenv()
+url: Optional[str] = os.environ.get("SUPABASE_URL")
+key: Optional[str] = os.environ.get("SUPABASE_KEY")
+supabase: Optional[Client] = None
 
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
+if url and key:
+    try:
+        supabase = create_client(url, key)
+        print("✅ Supabase (db.py) connected")
+    except Exception as e:
+        print(f"⚠️ Supabase (db.py) connection failed: {e}")
+        supabase = None
+else:
+    print("⚠️ SUPABASE_URL or SUPABASE_KEY not set in db.py")
+
+def get_supabase_client() -> Client:
+    """Get Supabase client or raise error"""
+    if not supabase:
+        raise RuntimeError("Supabase not configured")
+    return supabase

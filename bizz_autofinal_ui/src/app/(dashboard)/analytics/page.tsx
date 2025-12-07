@@ -49,38 +49,70 @@ export default function AnalyticsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // New state to trigger data refresh
+
+  // Function to manually trigger a data refresh (for debugging/testing)
+  const handleRefresh = () => {
+    console.log("🔄 Triggering data refresh...");
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log(`🚀 fetchData triggered (refreshTrigger: ${refreshTrigger})`);
       try {
         setLoading(true);
+        setError(null); // Clear previous errors
+
+        const endpoints = {
+          invoices: API_ENDPOINTS.invoices,
+          clients: API_ENDPOINTS.clients,
+          products: API_ENDPOINTS.products,
+          whatsappLogs: API_ENDPOINTS.whatsappLogs,
+        };
+
+        const requests = Object.entries(endpoints).map(([key, endpoint]) => {
+          console.log(`📡 Fetching ${key} from ${endpoint}`);
+          return apiClient.get(endpoint);
+        });
+
         const [
           invoicesRes,
           clientsRes,
           productsRes,
           whatsappLogsRes,
-        ] = await Promise.all([
-          apiClient.get<Invoice[]>(API_ENDPOINTS.invoices),
-          apiClient.get<Client[]>(API_ENDPOINTS.clients),
-          apiClient.get<Product[]>(API_ENDPOINTS.products),
-          apiClient.get<WhatsappLog[]>(API_ENDPOINTS.whatsappLogs),
-        ]);
+        ] = await Promise.all(requests);
 
-        if (invoicesRes.data) setInvoices(invoicesRes.data);
-        if (clientsRes.data) setClients(clientsRes.data);
-        if (productsRes.data) setProducts(productsRes.data);
-        if (whatsappLogsRes.data) setWhatsappLogs(whatsappLogsRes.data);
+        console.log("✅ API calls successful. Processing data...");
+        if (invoicesRes.data) {
+          setInvoices(invoicesRes.data);
+          console.log("📈 Invoices data received:", invoicesRes.data.length, "items");
+        }
+        if (clientsRes.data) {
+          setClients(clientsRes.data);
+          console.log("👥 Clients data received:", clientsRes.data.length, "items");
+        }
+        if (productsRes.data) {
+          setProducts(productsRes.data);
+          console.log("📦 Products data received:", productsRes.data.length, "items");
+        }
+        if (whatsappLogsRes.data) {
+          setWhatsappLogs(whatsappLogsRes.data);
+          console.log("💬 WhatsApp Logs data received:", whatsappLogsRes.data.length, "items");
+        }
 
       } catch (err) {
-        setError("Failed to fetch analytics data.");
-        console.error("Error fetching analytics data:", err);
+        const errorMessage = `Failed to fetch analytics data: ${err.message || err}`;
+        setError(errorMessage);
+        console.error("❌ Error fetching analytics data:", err);
       } finally {
         setLoading(false);
+        console.log("✅ fetchData completed.");
       }
     };
 
     fetchData();
-  }, []);
+  }, [refreshTrigger]); // Depend on refreshTrigger to re-run fetchData
 
   // Process data for charts and stats
   const { revenueData, clientData, productData, messageData, stats } = useMemo(() => {

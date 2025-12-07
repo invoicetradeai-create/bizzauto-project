@@ -9,16 +9,18 @@ import { apiClient } from "@/lib/api-client";
 import { X } from "lucide-react";
 
 interface OcrUploadCardProps {
+  companyId: string; // The user's company ID is required for the upload
   onClose: () => void;
+  onUploadSuccess?: () => void; // Optional: To refresh data after success
 }
 
-export default function OcrUploadCard({ onClose }: OcrUploadCardProps) {
+export default function OcrUploadCard({ companyId, onClose, onUploadSuccess }: OcrUploadCardProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
+    if (event.target.files && event.target.files.length > 0) {
       setFile(event.target.files[0]);
       setStatus("idle");
       setMessage("");
@@ -32,37 +34,52 @@ export default function OcrUploadCard({ onClose }: OcrUploadCardProps) {
       setStatus("error");
       return;
     }
+    
+    if (!companyId) {
+      setMessage("Company ID is missing. Cannot upload.");
+      setStatus("error");
+      return;
+    }
 
     setStatus("uploading");
-    setMessage("Uploading file...");
+    setMessage("Processing invoice...");
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("company_id", companyId);
+
+    // --- ✅ Debugging Logs ---
+    console.log('Sending company_id:', companyId);
+    console.log('FormData contents:', Array.from(formData.entries()));
+    // -------------------------
 
     try {
-      const response = await apiClient.post("/api/ocr/upload", formData, {
+      // ✅ Corrected the API endpoint
+      const response = await apiClient.post("/api/invoice-processing/upload-invoice", formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
 
       const data = response.data;
-
-      setStatus("success");
-      setMessage(`File '${data.filename}' uploaded and queued for processing.`);
-      const fileInput = document.getElementById('invoice-file') as HTMLInputElement;
-      if(fileInput) fileInput.value = "";
-      setFile(null);
+      
+      if (data.success) {
+        setStatus("success");
+        setMessage(`Success! Invoice processed (ID: ${data.invoice_id}). Items processed: ${data.items_processed}.`);
+        setFile(null);
+        // Optionally call the success callback to refresh the parent component's data
+        if (onUploadSuccess) {
+            onUploadSuccess();
+        }
+      } else {
+        setStatus("error");
+        setMessage(data.message || "An unknown error occurred during processing.");
+      }
 
     } catch (error: any) {
       setStatus("error");
-      if (error.response) {
-        setMessage(`Upload failed: ${error.response.data.detail || "Server error"}`);
-      } else if (error.request) {
-        setMessage("Upload failed: No response from server.");
-      } else {
-        setMessage(`Upload failed: ${error.message}`);
-      }
+      const errorMessage = error.response?.data?.detail || error.message || "An unexpected network error occurred.";
+      setMessage(`Upload failed: ${errorMessage}`);
       console.error("Upload error:", error);
     }
   };
@@ -72,27 +89,32 @@ export default function OcrUploadCard({ onClose }: OcrUploadCardProps) {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Upload an Invoice Image</CardTitle>
+            <CardTitle>Upload and Process Invoice</CardTitle>
             <X className="cursor-pointer" onClick={onClose} />
           </div>
           <CardDescription>
-            Select an image file (e.g., PNG, JPG) of an invoice to automatically extract its data.
+            Upload a PDF or image file of an invoice. The system will automatically extract the details.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid w-full max-w-sm items-center gap-1.5">
               <Label htmlFor="invoice-file">Invoice File</Label>
-              <Input id="invoice-file" type="file" onChange={handleFileChange} accept="image/*" />
+              <Input 
+                id="invoice-file" 
+                type="file" 
+                onChange={handleFileChange} 
+                accept=".pdf,.png,.jpg,.jpeg" 
+              />
             </div>
             <Button type="submit" disabled={status === "uploading" || !file}>
-              {status === "uploading" ? "Uploading..." : "Upload and Process"}
+              {status === "uploading" ? "Processing..." : "Upload and Process"}
             </Button>
           </form>
           {message && (
             <div
               className={`mt-4 text-sm font-medium ${
-                status === "error" ? "text-red-600" : "text-green-600"
+                status === "error" ? "text-red-500" : "text-green-600"
               }`}
             >
               {message}

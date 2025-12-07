@@ -3,7 +3,6 @@ import json
 from google.cloud import storage
 import tempfile
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from ocr_tasks import process_invoice_image_gcp
 from uuid import UUID, uuid4
 from redis_client import get_redis_client # Adjust import path
 
