@@ -192,21 +192,21 @@ export default function InvoicesPage() {
         <div className="px-4 md:px-6 pb-6 overflow-x-auto">
           {loading ? <p className="text-center">Loading...</p> : error ? <p className="text-center text-destructive">{error}</p> : (
             <div className="w-full bg-card rounded-lg border-border border text-sm overflow-x-auto">
-              <Table className="w-full min-w-[800px]"> {/* Adopt new Table component */}
+              <Table className="w-full min-w-[800px]">
                 <TableHeader className="bg-muted/50"><TableRow className="text-left text-muted-foreground whitespace-nowrap"><TableHead className="p-3">Invoice ID</TableHead><TableHead className="p-3">Client ID</TableHead><TableHead className="p-3">Date</TableHead><TableHead className="p-3">Amount</TableHead><TableHead className="p-3">Status</TableHead><TableHead className="p-3 text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {filteredInvoices.length > 0 ? filteredInvoices.map((invoice) => (
-                    <TableRow key={invoice.id} className="border-b hover:bg-muted/50"> {/* Adopt new TableRow */}
-                      <TableCell className="p-3 font-mono text-xs">{invoice.id}</TableCell> {/* Adopt new TableCell */}
-                      <TableCell className="p-3 font-mono text-xs">{invoice.client_id || 'N/A'}</TableCell> {/* Adopt new TableCell */}
-                      <TableCell className="p-3">{formatDate(invoice.invoice_date)}</TableCell> {/* Adopt new TableCell */}
-                      <TableCell className="p-3">Rs {invoice.total_amount.toLocaleString()}</TableCell> {/* Adopt new TableCell */}
-                      <TableCell className="p-3"> {/* Adopt new TableCell */}
+                    <TableRow key={invoice.id} className="border-b hover:bg-muted/50">
+                      <TableCell className="p-3 font-mono text-xs">{invoice.id}</TableCell>
+                      <TableCell className="p-3 font-mono text-xs">{invoice.client_id || 'N/A'}</TableCell>
+                      <TableCell className="p-3">{formatDate(invoice.invoice_date)}</TableCell>
+                      <TableCell className="p-3">Rs {invoice.total_amount.toLocaleString()}</TableCell>
+                      <TableCell className="p-3">
                         <span className={`px-2 py-1 rounded-full text-xs ${invoice.payment_status === "paid" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
                           {invoice.payment_status || 'unknown'}
                         </span>
                       </TableCell>
-                      <TableCell className="p-3 text-right"> {/* Adopt new TableCell */}
+                      <TableCell className="p-3 text-right">
                         <div className="relative inline-block">
                           <Sheet>
                             <SheetTrigger asChild>
@@ -217,7 +217,7 @@ export default function InvoicesPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )) : <TableRow><TableCell colSpan={6} className="p-6 text-center text-muted-foreground">No invoices found.</TableCell></TableRow>} {/* Adopt new TableRow and TableCell */}
+                  )) : <TableRow><TableCell colSpan={6} className="p-6 text-center text-muted-foreground">No invoices found.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>
