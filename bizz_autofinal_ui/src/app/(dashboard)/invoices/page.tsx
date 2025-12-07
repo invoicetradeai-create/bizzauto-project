@@ -79,7 +79,7 @@ export default function InvoicesPage() {
       } else {
         // Create logic - Adopt remote's API endpoint
         console.log("➕ Creating new invoice with data:", invoiceData);
-        await apiClient.post<Invoice>(API_ENDPOINTS.invoiceUpload, invoiceData); // Assuming invoiceUpload is for creation
+        await apiClient.post<Invoice>(API_ENDPOINTS.invoice, invoiceData); // Use manual invoice creation endpoint
         console.log("✅ Invoice created successfully.");
       }
       setIsSheetOpen(false);
