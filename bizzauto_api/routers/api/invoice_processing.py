@@ -30,11 +30,12 @@ ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
 
 @router.post("/upload-invoice", response_model=models.InvoiceUploadResponse)
 async def upload_invoice(
-    company_id: UUID = Form(...),
+    company_id: Optional[UUID] = Form(None),
     user_id: Optional[UUID] = Form(None),
     client_id: Optional[UUID] = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
     supabase_client: Client = Depends(get_supabase)
 ):
     """
@@ -42,6 +43,17 @@ async def upload_invoice(
     and updates inventory.
     """
     try:
+        # Resolving company_id from user if not provided
+        if not company_id:
+            if user.company_id:
+                company_id = user.company_id
+            else:
+                 raise HTTPException(status_code=400, detail="Company ID missing and user not associated with a company.")
+        
+        # Resolving user_id
+        if not user_id:
+            user_id = user.id
+
         logger.info(f"Received upload request for company: {company_id}")
         logger.info(f"File: {file.filename}, Content-Type: {file.content_type}")
 
