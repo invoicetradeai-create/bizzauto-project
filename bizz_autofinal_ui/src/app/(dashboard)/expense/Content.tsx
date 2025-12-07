@@ -105,7 +105,7 @@ export const DailyExpensesContent: React.FC = () => {
     setForm((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleEdit = (expense: DailyExpense) => {
+  const handleEdit = (expense: any) => {
     setEditingId(expense.id);
     
     // Safely parse the date. If it fails, default to today.
@@ -119,10 +119,10 @@ export const DailyExpensesContent: React.FC = () => {
 
     setForm({
       date: parsedDate,
-      amount: expense.amount.toString(),
-      category: expense.category,
-      paymentMethod: expense.paymentMethod,
-      description: expense.description,
+      amount: expense.amount != null ? expense.amount.toString() : '',
+      category: expense.category || '',
+      paymentMethod: expense.paymentMethod || '',
+      description: expense.description || expense.title || expense.notes || '',
       receiptFile: null,
       clientPhoneNumber: '', // Phone number isn't stored in DailyExpense, reset it
     });
