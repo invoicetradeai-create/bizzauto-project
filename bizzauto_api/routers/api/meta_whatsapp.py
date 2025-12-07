@@ -230,5 +230,36 @@ async def test_endpoint():
         "phone_id_set": bool(PHONE_NUMBER_ID),
         "verify_token_set": bool(VERIFY_TOKEN)
     }
-from sql_models import Company
+
+class TestAgentRequest(BaseModel):
+    message: str
+    phone: str
+    company_id: str
+
+@router.post("/test-agent")
+async def test_agent_endpoint(request: TestAgentRequest, db: Session = Depends(get_db)):
+    """
+    Manually trigger the AI agent for testing purposes (bypassing Webhook).
+    """
+    try:
+        print(f"🧪 Testing Agent with message: {request.message}")
+        # Use provided company_id or find a dummy user
+        try:
+            company_uuid = UUID(request.company_id)
+        except ValueError:
+             raise HTTPException(status_code=400, detail="Invalid UUID")
+             
+        # Find a user for this company to simulate context
+        user = db.query(User).filter(User.company_id == company_uuid).first()
+        user_id = user.id if user else None
+        
+        reply = await run_whatsapp_agent(
+            message=request.message, 
+            phone_number=request.phone, 
+            user_id=user_id, 
+            company_id=company_uuid
+        )
+        return {"reply": reply}
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
 
