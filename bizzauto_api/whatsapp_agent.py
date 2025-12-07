@@ -174,7 +174,7 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
             """
 
             model = genai.GenerativeModel(
-                model_name='gemini-2.0-flash',
+                model_name='gemini-1.5-flash',
                 system_instruction=tenant_system_instructions,
                 tools=tools_list
             )
