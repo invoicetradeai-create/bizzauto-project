@@ -107,8 +107,18 @@ export const DailyExpensesContent: React.FC = () => {
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
+    
+    // Safely parse the date. If it fails, default to today.
+    let parsedDate = new Date();
+    if (expense.date) {
+        const d = new Date(expense.date);
+        if (!isNaN(d.getTime())) {
+            parsedDate = d;
+        }
+    }
+
     setForm({
-      date: new Date(expense.date),
+      date: parsedDate,
       amount: expense.amount.toString(),
       category: expense.category,
       paymentMethod: expense.paymentMethod,
