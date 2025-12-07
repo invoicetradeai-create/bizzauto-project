@@ -34,6 +34,8 @@ export const DailyExpensesContent: React.FC = () => {
     clientPhoneNumber: '',
   });
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchExpenses();
     fetchSummary();
@@ -103,6 +105,32 @@ export const DailyExpensesContent: React.FC = () => {
     setForm((prev) => ({ ...prev, [id]: value }));
   };
 
+  const handleEdit = (expense: DailyExpense) => {
+    setEditingId(expense.id);
+    setForm({
+      date: new Date(expense.date),
+      amount: expense.amount.toString(),
+      category: expense.category,
+      paymentMethod: expense.paymentMethod,
+      description: expense.description,
+      receiptFile: null,
+      clientPhoneNumber: '', // Phone number isn't stored in DailyExpense, reset it
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setForm({
+      date: new Date(),
+      amount: '',
+      category: '',
+      paymentMethod: '',
+      description: '',
+      receiptFile: null,
+      clientPhoneNumber: '',
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -128,7 +156,6 @@ export const DailyExpensesContent: React.FC = () => {
 
     try {
       // Create expense object in the format expected by the backend Pydantic model
-      // Note: Don't include company_id or user_id - backend will set these from authenticated user
       const expenseData = {
         title: form.description, // Backend expects 'title', not 'description'
         category: form.category,
@@ -138,17 +165,30 @@ export const DailyExpensesContent: React.FC = () => {
         // payment_method is not part of the Expense model, so we don't include it
       };
 
-      const response = await apiClient.post('/api/expenses/', expenseData);
-      if (response.data) {
-        const added: DailyExpense = response.data;
-        setExpenses(prev => [added, ...prev]);
-        setForm({ date: new Date(), amount: '', category: '', paymentMethod: '', description: '', receiptFile: null, clientPhoneNumber: '' });
-        await fetchSummary();
-        toast.success("Expense added successfully!"); // Add success toast
+      if (editingId) {
+        // Update existing expense
+        const response = await apiClient.put(`/api/expenses/${editingId}`, expenseData);
+        if (response.data) {
+          const updated: DailyExpense = response.data;
+          setExpenses(prev => prev.map(exp => exp.id === editingId ? updated : exp));
+          handleCancelEdit(); // Reset form and mode
+          await fetchSummary();
+          toast.success("Expense updated successfully!");
+        }
+      } else {
+        // Create new expense
+        const response = await apiClient.post('/api/expenses/', expenseData);
+        if (response.data) {
+          const added: DailyExpense = response.data;
+          setExpenses(prev => [added, ...prev]);
+          handleCancelEdit(); // Reset form
+          await fetchSummary();
+          toast.success("Expense added successfully!");
+        }
       }
     } catch (err) {
-      console.error('Failed to add expense:', err);
-      toast.error(`Failed to add expense: ${err instanceof Error ? err.message : String(err)}`); // Use toast for error
+      console.error('Failed to save expense:', err);
+      toast.error(`Failed to save expense: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -314,7 +354,7 @@ const handleSendExpenseReportWhatsApp = async (expense: any) => {
       {/* Add Expense Form & Table */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="p-4 lg:col-span-1">
-          <h3 className="font-semibold mb-4 text-lg">Add New Expense</h3>
+          <h3 className="font-semibold mb-4 text-lg">{editingId ? 'Edit Expense' : 'Add New Expense'}</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="description">Description</label>
@@ -322,7 +362,7 @@ const handleSendExpenseReportWhatsApp = async (expense: any) => {
             </div>
             <div>
               <label htmlFor="category">Category</label>
-              <Select onValueChange={(val: string) => setForm({ ...form, category: val })}><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger><SelectContent>{expenseCategories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select>
+              <Select value={form.category} onValueChange={(val: string) => setForm({ ...form, category: val })}><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger><SelectContent>{expenseCategories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select>
             </div>
             <div>
               <label htmlFor="amount">Amount</label>
@@ -334,15 +374,22 @@ const handleSendExpenseReportWhatsApp = async (expense: any) => {
             </div>
             <div>
               <label htmlFor="paymentMethod">Payment Method</label>
-              <Select onValueChange={(val: string) => setForm({ ...form, paymentMethod: val })}><SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger><SelectContent>{paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select>
+              <Select value={form.paymentMethod} onValueChange={(val: string) => setForm({ ...form, paymentMethod: val })}><SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger><SelectContent>{paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select>
             </div>
             <div>
               <label htmlFor="clientPhoneNumber">Client WhatsApp Number</label>
               <Input id="clientPhoneNumber" value={form.clientPhoneNumber} onChange={handleInput} placeholder="923001234567" />
             </div>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap justify-end gap-2">
-              <Button type="submit" className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" /> Add Expense</Button>
-              <Button type="button" onClick={handleSendExpenseReportWhatsApp} disabled={sendingWhatsApp || !form.clientPhoneNumber} className="w-full sm:w-auto">
+            <div className="flex flex-col gap-2">
+              <Button type="submit" className="w-full">
+                {editingId ? <><PenSquare className="w-4 h-4 mr-2" /> Update Expense</> : <><Plus className="w-4 h-4 mr-2" /> Add Expense</>}
+              </Button>
+              {editingId && (
+                <Button type="button" variant="outline" onClick={handleCancelEdit} className="w-full">
+                  Cancel Edit
+                </Button>
+              )}
+              <Button type="button" onClick={handleSendExpenseReportWhatsApp} disabled={sendingWhatsApp || !form.clientPhoneNumber} className="w-full mt-2">
                 {sendingWhatsApp ? 'Sending...' : 'Send Report via WhatsApp'}
               </Button>
             </div>
@@ -367,7 +414,7 @@ const handleSendExpenseReportWhatsApp = async (expense: any) => {
                     <td>Rs {exp.amount.toFixed(2)}</td>
                     <td>{exp.paymentMethod}</td>
                     <td>
-                      <Button variant="ghost" size="icon"><PenSquare className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(exp)}><PenSquare className="w-4 h-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => handleDelete(exp.id)}><Trash2 className="w-4 h-4" /></Button>
                     </td>
                   </tr>
