@@ -8,12 +8,14 @@ from models import InvoiceItem as PydanticInvoiceItem
 from crud import (
     get_invoice_item, get_invoice_items, create_invoice_item, update_invoice_item, delete_invoice_item
 )
+from dependencies import get_current_user
+from sql_models import User
 
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticInvoiceItem])
-def read_invoice_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    invoice_items = get_invoice_items(db, skip=skip, limit=limit)
+def read_invoice_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    invoice_items = get_invoice_items(db, user_id=user.id, skip=skip, limit=limit)
     return invoice_items
 
 @router.get("/{invoice_item_id}", response_model=PydanticInvoiceItem)

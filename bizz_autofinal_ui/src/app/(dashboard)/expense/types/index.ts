@@ -18,4 +18,5 @@ export interface NewExpenseForm {
     paymentMethod: string;
     description: string;
     receiptFile: File | null;
+    clientPhoneNumber?: string;
 }

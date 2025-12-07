@@ -12,9 +12,22 @@ function Avatar({
     <AvatarPrimitive.Root
       data-slot="avatar"
       className={cn(
-        "relative flex shrink-0 overflow-hidden rounded-full bg-blue-600 text-white",
+        "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full bg-blue-600 text-white",
         className
       )}
+      {...props}
+    />
+  );
+}
+
+function AvatarImage({
+  className,
+  ...props
+}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+  return (
+    <AvatarPrimitive.Image
+      data-slot="avatar-image"
+      className={cn("aspect-square h-full w-full", className)}
       {...props}
     />
   );
@@ -38,14 +51,14 @@ function AvatarFallback({
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex items-center justify-center rounded-full bg-blue-600 text-white font-semibold text-sm w-10 h-10",
+        "flex items-center justify-center rounded-full bg-blue-600 text-white font-semibold text-sm w-full h-full",
         className
       )}
       {...props}
     >
-      {avatarLetter || "?"} {/* Default ? if not loaded */}
+      {props.children || avatarLetter || "?"}
     </AvatarPrimitive.Fallback>
   );
 }
 
-export { Avatar, AvatarFallback };
+export { Avatar, AvatarImage, AvatarFallback };

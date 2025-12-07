@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL || "https://bizzauto-project.onrender.com";
+const baseURL = process.env.NODE_ENV === 'development' ? "http://127.0.0.1:8000" : (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000");
 console.log("🚀 API Client Base URL:", baseURL);
 
 const apiClient = axios.create({
@@ -10,12 +10,12 @@ const apiClient = axios.create({
   },
 });
 
-apiClient.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const userId = localStorage.getItem("user_id");
-    if (userId) {
-      config.headers["X-User-Id"] = userId;
-    }
+import { supabase } from "@/lib/supabaseClient";
+
+apiClient.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers["Authorization"] = `Bearer ${session.access_token}`;
   }
   return config;
 });

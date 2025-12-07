@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, Bell, Menu, Search, User, Mail, Phone, Building, Lock, Key } from "lucide-react";
 import Sidebar, { NavigationContent } from "@/components/Sidebar";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label"; // Import Label
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { apiClient } from "@/lib/api-client";
-import { UUID } from "crypto";
+
+type UUID = string;
 
 // Define types for the settings values
 type ProfileSettings = {
@@ -49,15 +52,15 @@ type UserType = {
   email: string;
 };
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { theme, toggleTheme, mounted } = useTheme();
-  
+
   const initialTab = searchParams.get("tab");
   // Capitalize the first letter if it exists, otherwise default to "Profile"
-  const defaultTab = initialTab 
-    ? initialTab.charAt(0).toUpperCase() + initialTab.slice(1) 
+  const defaultTab = initialTab
+    ? initialTab.charAt(0).toUpperCase() + initialTab.slice(1)
     : "Profile";
 
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -95,29 +98,26 @@ export default function SettingsPage() {
       setLoading(true);
       setError(null);
       try {
-        // 1. Fetch users to get a valid user ID
-        const usersRes = await apiClient.get<UserType[]>('/api/users');
-        const users = usersRes.data;
-        
-        if (!users || users.length === 0) {
-          throw new Error("No users found. Cannot manage settings.");
-        }
-        const currentUserId = users[0].id;
+        // 1. Fetch current user to get user ID
+        const usersRes = await apiClient.get<UserType>('/api/users/me'); // Changed to /api/users/me
+        const currentUser = usersRes.data; // Now directly returns a single UserType object
+
+        const currentUserId = currentUser.id;
         setUserId(currentUserId);
 
         // 2. Fetch all settings
-        const settingsRes = await apiClient.get<Setting[]>('/tables/settings/');
+        const settingsRes = await apiClient.get<Setting[]>('/api/settings/');
         if (settingsRes.data) {
           const newSettings: Record<string, any> = {};
           const newSettingsMap: Record<string, UUID> = {};
-          
+
           // 3. Filter settings for the current user and parse the value
           const userSettings = settingsRes.data.filter(s => s.user_id === currentUserId);
           userSettings.forEach(setting => {
             try {
               // The 'value' from the DB might be a stringified JSON, so we parse it.
-              newSettings[setting.key] = typeof setting.value === 'string' 
-                ? JSON.parse(setting.value) 
+              newSettings[setting.key] = typeof setting.value === 'string'
+                ? JSON.parse(setting.value)
                 : setting.value;
             } catch (e) {
               console.error(`Failed to parse setting value for key: ${setting.key}`, e);
@@ -168,10 +168,10 @@ export default function SettingsPage() {
     try {
       if (settingId) {
         // Update existing setting
-        await apiClient.put(`/tables/settings/${settingId}`, data);
+        await apiClient.put(`/api/settings/${settingId}`, data);
       } else {
         // Create new setting
-        await apiClient.post('/tables/settings/', data);
+        await apiClient.post('/api/settings/', data);
       }
       alert(`${key.charAt(0).toUpperCase() + key.slice(1)} settings saved!`);
     } catch (err: any) {
@@ -205,95 +205,110 @@ export default function SettingsPage() {
           <p className="text-muted-foreground mb-6">Manage your account settings and preferences</p>
 
           <div className="flex flex-wrap gap-3 mb-6">
-            {["Profile", "Notifications", "Integrations"].map((tab) => (
+            {["Profile", "Notifications", "Integrations", "Alerts"].map((tab) => (
               <button key={tab} onClick={() => handleTabClick(tab)} className={`px-4 py-2 rounded-full text-sm font-medium shadow transition-colors ${activeTab === tab ? "bg-blue-600 text-white" : "bg-card hover:bg-muted"}`}>
                 {tab}
               </button>
             ))}
           </div>
 
-          {loading ? <p>Loading settings...</p> : error ? <p className="text-destructive">{error}</p> : (
-            <>
+          {loading ? (
+            <p>Loading settings...</p>
+          ) : error ? (
+            <p className="text-destructive">{error}</p>
+          ) : (
+            <div>
               {activeTab === "Profile" && (
-                <div className="bg-card border rounded-lg p-6">
-                  <h2 className="text-lg font-semibold mb-4">Profile</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {(Object.keys(settings.profile) as Array<keyof ProfileSettings>).map((key) => (
-                      <div key={key}>
-                        <label className="text-sm mb-1 block capitalize">{key.replace(/([A-Z])/g, ' ')}</label>
-                        <div className="relative">
-                          <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <input value={settings.profile[key]} onChange={(e) => handleSettingChange('profile', key, e.target.value)} className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm bg-card" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-8 flex justify-end">
-                    <Button onClick={() => handleSave('profile')}>Save Changes</Button>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "Notifications" && (
-                <div className="bg-card border rounded-lg p-6">
-                  <h2 className="text-lg font-semibold mb-4">Notification Preferences</h2>
-                  <div className="space-y-4">
-                    {(Object.keys(settings.notifications) as Array<keyof NotificationSettings>).map((key) => (
-                       <div key={key} className="flex items-center justify-between border-b py-2 text-sm">
-                         <span className="capitalize">{key.replace(/([A-Z])/g, ' ')}</span>
-                         <button onClick={() => handleSettingChange('notifications', key, !settings.notifications[key])} className={`relative w-12 h-6 rounded-full transition-colors ${settings.notifications[key] ? "bg-primary" : "bg-muted"}`}>
-                           <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${settings.notifications[key] ? "translate-x-6" : ""}`}></span>
-                         </button>
-                       </div>
-                    ))}
-                  </div>
-                   <div className="mt-8 flex justify-end">
-                    <Button onClick={() => handleSave('notifications')}>Save Preferences</Button>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "Integrations" && (
-                 <div className="bg-card border rounded-lg p-6">
-                  <h2 className="text-lg font-semibold mb-4">API Integrations</h2>
-                  <div className="space-y-6">
-                    {(Object.keys(settings.integrations) as Array<keyof IntegrationSettings>).map((key) => (
-                      <div key={key}>
-                        <label className="text-sm font-medium capitalize">{key.replace(/([A-Z])/g, ' ')}</label>
-                        <div className="relative mt-1">
-                          <Key className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                          <input value={settings.integrations[key]} onChange={(e) => handleSettingChange('integrations', key, e.target.value)} className="w-full border rounded-lg pl-9 pr-3 py-2 bg-card" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-8 flex justify-end">
-                    <Button onClick={() => handleSave('integrations')}>Save API Keys</Button>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "Alerts" && (
-                 <div className="bg-card border rounded-lg p-6">
-                  <h2 className="text-lg font-semibold mb-4">Alert Settings</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="text-sm font-medium">Admin WhatsApp Number</label>
-                      <div className="relative mt-1">
-                        <Phone className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                        <input value={settings.alerts.phone} onChange={(e) => handleSettingChange('alerts', 'phone', e.target.value)} className="w-full border rounded-lg pl-9 pr-3 py-2 bg-card" />
-                      </div>
+                <div className="space-y-6 p-4 border rounded-lg bg-card">
+                  <h2 className="text-2xl font-bold text-foreground">Profile Settings</h2>
+                  <p className="text-muted-foreground">Manage your personal and company information.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Full Name</Label>
+                      <Input id="fullName" value={settings.profile.fullName} onChange={(e) => handleSettingChange("profile", "fullName", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" value={settings.profile.email} onChange={(e) => handleSettingChange("profile", "email", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input id="phone" value={settings.profile.phone} onChange={(e) => handleSettingChange("profile", "phone", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="company">Company</Label>
+                      <Input id="company" value={settings.profile.company} onChange={(e) => handleSettingChange("profile", "company", e.target.value)} />
                     </div>
                   </div>
-                  <div className="mt-8 flex justify-end">
-                    <Button onClick={() => handleSave('alerts')}>Save Alert Settings</Button>
-                  </div>
+                  <Button onClick={() => handleSave("profile")}>Save Profile</Button>
                 </div>
               )}
-            </>
+          
+              {activeTab === "Notifications" && (
+                <div className="space-y-6 p-4 border rounded-lg bg-card">
+                  <h2 className="text-2xl font-bold text-foreground">Notification Settings</h2>
+                  <p className="text-muted-foreground">Configure how you receive alerts and updates.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    {Object.keys(settings.notifications).map((key) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={key}
+                          checked={settings.notifications[key]}
+                          onCheckedChange={(checked) => handleSettingChange("notifications", key, checked)}
+                        />
+                        <Label htmlFor={key} className="capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').trim()} {/* Converts camelCase to "Camel Case" */}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <Button onClick={() => handleSave("notifications")}>Save Notifications</Button>
+                </div>
+              )}
+          
+              {activeTab === "Integrations" && (
+                <div className="space-y-6 p-4 border rounded-lg bg-card">
+                  <h2 className="text-2xl font-bold text-foreground">Integration Settings</h2>
+                  <p className="text-muted-foreground">Connect with third-party services.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsappApi">WhatsApp API Key</Label>
+                      <Input id="whatsappApi" value={settings.integrations.whatsappApi} onChange={(e) => handleSettingChange("integrations", "whatsappApi", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gmailApi">Gmail API Key</Label>
+                      <Input id="gmailApi" value={settings.integrations.gmailApi} onChange={(e) => handleSettingChange("integrations", "gmailApi", e.target.value)} />
+                    </div>
+                  </div>
+                  <Button onClick={() => handleSave("integrations")}>Save Integrations</Button>
+                </div>
+              )}
+          
+              {activeTab === "Alerts" && (
+                <div className="space-y-6 p-4 border rounded-lg bg-card">
+                  <h2 className="text-2xl font-bold text-foreground">Alert Settings</h2>
+                  <p className="text-muted-foreground">Configure specific alert preferences.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="alertPhone">Alert Phone Number</Label>
+                      <Input id="alertPhone" value={settings.alerts.phone} onChange={(e) => handleSettingChange("alerts", "phone", e.target.value)} />
+                    </div>
+                  </div>
+                  <Button onClick={() => handleSave("alerts")}>Save Alerts</Button>
+                </div>
+              )}
+            </div>
           )}
-        </div>
       </div>
+            
     </div>
+    </div>
+  );
+}
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>Loading settings...</div>}>
+      <SettingsContent />
+    </Suspense>
   );
 }

@@ -60,7 +60,7 @@ export default function SignIn() {
     console.log("Supabase auth error:", error);
 
     if (error) {
-     if (error.message.toLowerCase().includes("confirm")) {
+      if (error.message.toLowerCase().includes("confirm")) {
         toast({
           title: "Email Not Verified",
           description: "Please confirm your email before logging in.",
@@ -86,15 +86,34 @@ export default function SignIn() {
     // On success, store the user ID
     if (data.user) {
       localStorage.setItem("user_id", data.user.id);
+
+      try {
+        // Fetch user role from backend
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, {
+          headers: {
+            "Authorization": `Bearer ${data.session?.access_token}`,
+          },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.role === "admin") {
+            console.log("Redirecting to ADMIN dashboard...");
+            router.push("/admin/dashboard");
+          } else {
+            console.log("Redirecting to CLIENT dashboard...");
+            router.push("/dashboard");
+          }
+        } else {
+          // Fallback if backend fetch fails
+          console.log("Failed to fetch role, defaulting to client dashboard...");
+          router.push("/dashboard");
+        }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+        router.push("/dashboard");
+      }
     }
-
-    toast({
-      title: "Welcome Back!",
-      description: "Signed in successfully",
-    });
-
-    console.log("Redirecting to dashboard...");
-    router.push("/dashboard");
     setLoading(false);
   };
 
@@ -109,17 +128,18 @@ export default function SignIn() {
           <Label>Email</Label>
           <Input
             type="email"
-            placeholder="trader@example.com"
+            placeholder="Enter Your Email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           />
         </div>
 
         <div className="relative">
+          <Label>Password</Label>
           <input
             type={showPassword ? "text" : "password"}
             id="password"
-            placeholder="Enter your password"
+            placeholder="Enter Your Password"
             value={formData.password}
             onChange={(e) =>
               setFormData({ ...formData, password: e.target.value })
@@ -156,10 +176,6 @@ export default function SignIn() {
           >
             Sign Up
           </button>
-        </div>
-
-        <div className="p-3 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-center text-xs">
-          Demo: any email / any password
         </div>
       </form>
     </AuthCard>

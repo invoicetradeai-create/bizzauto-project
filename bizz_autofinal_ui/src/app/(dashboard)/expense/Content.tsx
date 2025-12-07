@@ -4,12 +4,14 @@ import React, { useEffect, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import type { DailyExpense, PaymentMethod, NewExpenseForm } from './types/index';
+import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Input as RawInput } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Download, Plus, FileText, Wallet, CalendarDays, Tag, CreditCard, PenSquare } from 'lucide-react';
+import { Trash2, Plus, FileText, Wallet, CalendarDays, Tag, PenSquare } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/api-client';
 
 const expenseCategories: string[] = ['Fuel', 'Rent', 'Salary', 'Maintenance', 'Office Supplies', 'Transport', 'Marketing'];
 const paymentMethods: PaymentMethod[] = ['Cash', 'Bank Transfer', 'Credit Card', 'Debit Card'];
@@ -19,9 +21,8 @@ export const DailyExpensesContent: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [summary, setSummary] = useState({ today: 0, month: 0, year: 0 });
-  const [exportingCSV, setExportingCSV] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
-  const [sendingWhatsApp, setSendingWhatsApp] = useState(false); // New state for WhatsApp loading
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
 
   const [form, setForm] = useState<NewExpenseForm>({
     date: new Date(),
@@ -30,6 +31,7 @@ export const DailyExpensesContent: React.FC = () => {
     paymentMethod: '',
     description: '',
     receiptFile: null,
+    clientPhoneNumber: '',
   });
 
   useEffect(() => {
@@ -40,12 +42,13 @@ export const DailyExpensesContent: React.FC = () => {
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/expenses/all');
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data: DailyExpense[] = await res.json();
-      setExpenses(data);
+      // Use the correct endpoint that exists in the backend
+      const response = await apiClient.get('/api/expenses/');
+      if (response.data) {
+        setExpenses(response.data);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch expenses:', err);
     } finally {
       setLoading(false);
     }
@@ -53,87 +56,131 @@ export const DailyExpensesContent: React.FC = () => {
 
   const fetchSummary = async () => {
     try {
-      const res = await fetch('/api/expenses/summary');
-      if (!res.ok) return;
-      const data = await res.json();
-      setSummary(data);
+      // Use accounting endpoint for expense summary
+      const response = await apiClient.get('/api/accounting/expense_report');
+      if (response.data) {
+        const data = response.data;
+        // Calculate summary from the expense report data
+        const totalToday = data.reduce((sum: number, expense: any) => {
+          const expenseDate = new Date(expense.date || Date.now());
+          const today = new Date();
+          if (expenseDate.getDate() === today.getDate() &&
+              expenseDate.getMonth() === today.getMonth() &&
+              expenseDate.getFullYear() === today.getFullYear()) {
+            return sum + expense.sum;
+          }
+          return sum;
+        }, 0);
+
+        const totalMonth = data.reduce((sum: number, expense: any) => {
+          const expenseDate = new Date(expense.date || Date.now());
+          const today = new Date();
+          if (expenseDate.getMonth() === today.getMonth() &&
+              expenseDate.getFullYear() === today.getFullYear()) {
+            return sum + expense.sum;
+          }
+          return sum;
+        }, 0);
+
+        const totalYear = data.reduce((sum: number, expense: any) => {
+          const expenseDate = new Date(expense.date || Date.now());
+          const today = new Date();
+          if (expenseDate.getFullYear() === today.getFullYear()) {
+            return sum + expense.sum;
+          }
+          return sum;
+        }, 0);
+
+        setSummary({ today: totalToday, month: totalMonth, year: totalYear });
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch summary:', err);
     }
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
-    setForm((prev: NewExpenseForm) => ({
-      ...prev,
-      // @ts-ignore: dynamic key assignment, safe if id matches NewExpenseForm keys
-      [id]: value
-    }));
-  };
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files && e.target.files[0];
-    setForm((prev: NewExpenseForm) => ({ ...prev, receiptFile: file ?? null }));
+    setForm((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const fd = new FormData();
-      fd.append('date', form.date.toISOString());
-      fd.append('amount', form.amount);
-      fd.append('category', form.category);
-      fd.append('paymentMethod', form.paymentMethod);
-      fd.append('description', form.description);
-      if (form.receiptFile) fd.append('receipt', form.receiptFile);
 
-      const res = await fetch('/api/expenses/add', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('Failed to add');
-      const added: DailyExpense = await res.json();
-      setExpenses(prev => [added, ...prev]);
-      setForm({ date: new Date(), amount: '', category: '', paymentMethod: '', description: '', receiptFile: null });
-      await fetchSummary();
+    // --- Validation ---
+    if (!form.description.trim()) {
+      toast.error("Description cannot be empty.");
+      return;
+    }
+    if (!form.category) {
+      toast.error("Please select a category.");
+      return;
+    }
+    const amount = parseFloat(form.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Amount must be a positive number.");
+      return;
+    }
+    if (!form.paymentMethod) {
+      toast.error("Please select a payment method.");
+      return;
+    }
+    // --- End Validation ---
+
+    try {
+      // Create expense object in the format expected by the backend Pydantic model
+      // Note: Don't include company_id or user_id - backend will set these from authenticated user
+      const expenseData = {
+        title: form.description, // Backend expects 'title', not 'description'
+        category: form.category,
+        amount: parseFloat(form.amount), // Convert to number
+        expense_date: form.date.toISOString().split('T')[0], // Backend expects 'expense_date' in YYYY-MM-DD format
+        notes: form.description // Also use description as notes
+        // payment_method is not part of the Expense model, so we don't include it
+      };
+
+      const response = await apiClient.post('/api/expenses/', expenseData);
+      if (response.data) {
+        const added: DailyExpense = response.data;
+        setExpenses(prev => [added, ...prev]);
+        setForm({ date: new Date(), amount: '', category: '', paymentMethod: '', description: '', receiptFile: null, clientPhoneNumber: '' });
+        await fetchSummary();
+        toast.success("Expense added successfully!"); // Add success toast
+      }
     } catch (err) {
-      console.error(err);
-      alert('Failed to add expense');
+      console.error('Failed to add expense:', err);
+      toast.error(`Failed to add expense: ${err instanceof Error ? err.message : String(err)}`); // Use toast for error
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this expense?')) return;
     try {
-      const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
-      const text = await res.text().catch(() => '');
-      console.log('[frontend] DELETE /api/expenses/', id, 'status=', res.status, 'body=', text);
-      if (!res.ok) {
-        // try to parse JSON body for error message
-        let msg = `Server returned ${res.status}`;
-        try {
-          const json = JSON.parse(text || '{}');
-          if (json?.error) msg = String(json.error);
-          else if (json?.message) msg = String(json.message);
-        } catch (e) {
-          // not JSON
-          if (text) msg = text;
-        }
-        throw new Error(msg);
+      const response = await apiClient.delete(`/api/expenses/${id}`);
+      if (response.status === 200 || response.status === 204) {
+        setExpenses(prev => prev.filter(p => p.id !== id));
+        await fetchSummary();
       }
-      setExpenses(prev => prev.filter(p => p.id !== id));
-      await fetchSummary();
     } catch (err) {
       console.error('[frontend] delete error:', err);
-      alert('Failed to delete: ' + String(err));
+      alert(`Failed to delete: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
-  const handleExport = async (format: 'csv' | 'pdf') => {
-    if (format === 'csv') setExportingCSV(true);
-    if (format === 'pdf') setExportingPDF(true);
-
+  const handleExport = async (format: 'pdf') => {
+    setExportingPDF(true);
     try {
-      const res = await fetch(`/api/expenses/export?format=${format}`);
-      if (!res.ok) throw new Error(`Failed to export ${format}`);
+      // For file downloads, we can still use the regular fetch but with proper authentication
+      // Since apiClient is primarily for JSON APIs, we'll construct the URL with proper auth if needed
+      // For now, we'll keep using fetch but ensure it works with the backend authentication
+      const token = localStorage.getItem('access_token'); // Assuming token is stored here
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`
+      };
 
+      const res = await fetch(`/api/expenses/export?format=${format}`, {
+        headers: token ? headers : {}
+      });
+      if (!res.ok) throw new Error(`Failed to export ${format}`);
       const blob = await res.blob();
       const filename = `expenses.${format}`;
       const url = window.URL.createObjectURL(blob);
@@ -149,38 +196,57 @@ export const DailyExpensesContent: React.FC = () => {
       console.error(`Error exporting ${format}:`, err);
       alert(`Failed to export ${format}: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      if (format === 'csv') setExportingCSV(false);
-      if (format === 'pdf') setExportingPDF(false);
+      setExportingPDF(false);
     }
   };
 
-  const handleSendWhatsApp = async () => {
-    setSendingWhatsApp(true);
+  const formatPhoneNumber = (phone: string) => {
+    return phone.replace(/[^0-9]/g, '').replace(/^0+/, '');
+  }
+
+const handleSendExpenseReportWhatsApp = async (expense: any) => {
     try {
-      // Assuming the WhatsApp API expects some data, e.g., the current summary
+      // 1. DEFINE PAYLOAD FIRST (Before using it)
       const payload = {
-        message: `Expense Summary: Today: Rs ${summary.today}, This Month: Rs ${summary.month}, This Year: Rs ${summary.year}`,
-        // You might want to add recipient information here, e.g., 'to': '+1234567890'
-        // For this example, we assume the backend knows who to send it to or it's configured.
+        title: "New Expense",
+        amount: Number(expense.amount),
+        category: expense.category,
+        payment_method: expense.payment_method,
+        description: expense.description || "No description",
+        date: new Date(expense.date).toISOString().split('T')[0],
+        phone: expense.phone || "923001234567" // Fallback if phone is missing
       };
 
-      const res = await fetch('/api/send-meta-whatsapp', {
-        method: 'POST',
+      setSendingWhatsApp(true);
+
+      // 2. NOW LOG IT (This works because 'payload' is defined above)
+      console.log("🚀 Sending WhatsApp payload to backend:", payload);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // 3. SEND REQUEST
+      const response = await apiClient.post("/expenses/send-whatsapp", payload, {
         headers: {
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(`Failed to send WhatsApp message: ${errorData.message}`);
-      }
+      console.log("✅ Backend Response:", response.data);
+      alert("WhatsApp message sent successfully!");
 
-      alert('Expense summary sent via WhatsApp successfully!');
-    } catch (err) {
-      console.error('Error sending WhatsApp message:', err);
-      alert(`Failed to send WhatsApp message: ${err instanceof Error ? err.message : String(err)}`);
+    } catch (error: any) {
+      console.error("❌ WhatsApp Error Full Object:", error);
+      
+      if (error.response) {
+        // Server responded with an error code (400, 500, etc.)
+        console.error("❌ Server Response Data:", error.response.data);
+        alert(`Failed: ${error.response.data.detail || "Server Error"}`);
+      } else if (error.request) {
+        // Request sent but no response
+        alert("Network Error: No response from server.");
+      } else {
+        alert(`Error: ${error.message}`);
+      }
     } finally {
       setSendingWhatsApp(false);
     }
@@ -193,151 +259,124 @@ export const DailyExpensesContent: React.FC = () => {
   });
 
   return (
-  <div className="flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6">
-  {/* Header */}
-  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
-    <div>
-      <h2 className="text-xl sm:text-2xl font-bold">Expense Management</h2>
-      <p className="text-sm text-muted-foreground">Track and manage business expenses</p>
+    <div className="flex-1 space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Expense Management</h2>
+          <p className="text-sm text-muted-foreground">Track and manage business expenses</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="default" size="sm" onClick={() => handleExport('pdf')} disabled={exportingPDF} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <FileText className="w-4 h-4 mr-2" /> {exportingPDF ? 'Downloading...' : 'Download PDF'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        {/* Stat Card: Today */}
+        <div className="flex items-center bg-white rounded-lg shadow-md p-5 w-full">
+          <div className="p-3 rounded-full bg-blue-100 text-blue-600 text-2xl mr-4 flex-shrink-0">
+            <i className="fas fa-calendar-day"></i> {/* Icon for Today */}
+          </div>
+          <div className="flex flex-col">
+            <p className="text-2xl font-bold text-gray-800">Rs {summary.today}</p>
+            <p className="text-sm text-gray-500">Today</p>
+          </div>
+        </div>
+
+        {/* Stat Card: This Month */}
+        <div className="flex items-center bg-white rounded-lg shadow-md p-5 w-full">
+          <div className="p-3 rounded-full bg-green-100 text-green-600 text-2xl mr-4 flex-shrink-0">
+            <i className="fas fa-calendar"></i> {/* Icon for This Month */}
+          </div>
+          <div className="flex flex-col">
+            <p className="text-2xl font-bold text-gray-800">Rs {summary.month}</p>
+            <p className="text-sm text-gray-500">This Month</p>
+          </div>
+        </div>
+
+        {/* Stat Card: This Year */}
+        <div className="flex items-center bg-white rounded-lg shadow-md p-5 w-full">
+          <div className="p-3 rounded-full bg-purple-100 text-purple-600 text-2xl mr-4 flex-shrink-0">
+            <i className="fas fa-calendar-days"></i> {/* Icon for This Year */}
+          </div>
+          <div className="flex flex-col">
+            <p className="text-2xl font-bold text-gray-800">Rs {summary.year}</p>
+            <p className="text-sm text-gray-500">This Year</p>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Add Expense Form & Table */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="p-4 lg:col-span-1">
+          <h3 className="font-semibold mb-4 text-lg">Add New Expense</h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="description">Description</label>
+              <Input id="description" value={form.description} onChange={handleInput} placeholder="e.g., Fuel for delivery truck" />
+            </div>
+            <div>
+              <label htmlFor="category">Category</label>
+              <Select onValueChange={(val: string) => setForm({ ...form, category: val })}><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger><SelectContent>{expenseCategories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select>
+            </div>
+            <div>
+              <label htmlFor="amount">Amount</label>
+              <Input id="amount" type="number" value={form.amount} onChange={handleInput} placeholder="e.g., 5000" />
+            </div>
+            <div>
+              <label htmlFor="date">Date</label>
+              <DatePicker selected={form.date} onChange={(d) => setForm({ ...form, date: d ?? new Date() })} className="w-full rounded-md border border-input bg-transparent px-3 py-2" />
+            </div>
+            <div>
+              <label htmlFor="paymentMethod">Payment Method</label>
+              <Select onValueChange={(val: string) => setForm({ ...form, paymentMethod: val })}><SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger><SelectContent>{paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select>
+            </div>
+            <div>
+              <label htmlFor="clientPhoneNumber">Client WhatsApp Number</label>
+              <Input id="clientPhoneNumber" value={form.clientPhoneNumber} onChange={handleInput} placeholder="923001234567" />
+            </div>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap justify-end gap-2">
+              <Button type="submit" className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" /> Add Expense</Button>
+              <Button type="button" onClick={handleSendExpenseReportWhatsApp} disabled={sendingWhatsApp || !form.clientPhoneNumber} className="w-full sm:w-auto">
+                {sendingWhatsApp ? 'Sending...' : 'Send Report via WhatsApp'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        <Card className="p-4 lg:col-span-2">
+          <div className="flex gap-4 mb-4">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search expenses..." />
+            <Button variant="outline">Filter</Button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Payment</th><th>Actions</th></tr></thead>
+              <tbody>
+                {loading && <tr><td colSpan={6} className="text-center">Loading...</td></tr>}
+                {!loading && filtered.map(exp => (
+                  <tr key={exp.id}>
+                    <td>{new Date(exp.date).toLocaleDateString()}</td>
+                    <td>{exp.description}</td>
+                    <td>{exp.category}</td>
+                    <td>Rs {exp.amount.toFixed(2)}</td>
+                    <td>{exp.paymentMethod}</td>
+                    <td>
+                      <Button variant="ghost" size="icon"><PenSquare className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(exp.id)}><Trash2 className="w-4 h-4" /></Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
     </div>
-    <div className="flex flex-wrap items-center gap-2 overflow-x-auto">
-      <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-9" onClick={() => handleExport('csv')} disabled={exportingCSV}>
-        <Download className="w-4 h-4 mr-2" /> {exportingCSV ? 'Exporting...' : 'Export CSV'}
-      </Button>
-      <Button variant="ghost" size="sm" className="flex-1 sm:flex-none h-9" onClick={() => handleExport('pdf')} disabled={exportingPDF}>
-        <FileText className="w-4 h-4 mr-2" /> {exportingPDF ? 'Exporting...' : 'Export PDF'}
-      </Button>
-    </div>
-  </div>
-
-  {/* Summary Cards */}
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-    <Card className="p-3 sm:p-4">
-      <div className="flex items-center gap-3">
-        <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">Today</p>
-          <p className="text-base sm:text-lg font-bold truncate">Rs {summary.today}</p>
-        </div>
-      </div>
-    </Card>
-    <Card className="p-3 sm:p-4">
-      <div className="flex items-center gap-3">
-        <CalendarDays className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">This Month</p>
-          <p className="text-base sm:text-lg font-bold truncate">Rs {summary.month}</p>
-        </div>
-      </div>
-    </Card>
-    <Card className="p-3 sm:p-4">
-      <div className="flex items-center gap-3">
-        <Tag className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">This Year</p>
-          <p className="text-base sm:text-lg font-bold truncate">Rs {summary.year}</p>
-        </div>
-      </div>
-    </Card>
-    <Card className="p-3 sm:p-4">
-      <div className="w-full">
-        <p className="text-sm text-muted-foreground mb-2">Actions</p>
-        <Button size="sm" className="w-full h-8 sm:h-9" onClick={handleSendWhatsApp} disabled={sendingWhatsApp}>
-          {sendingWhatsApp ? 'Sending...' : 'Send (WhatsApp)'}
-        </Button>
-      </div>
-    </Card>
-  </div>
-
-  {/* Add Expense Form & Table */}
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-    <Card className="p-3 sm:p-4 lg:col-span-1">
-      <h3 className="font-semibold mb-3 text-base sm:text-lg">Add New Expense</h3>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Inputs */}
-        <div className="flex flex-col space-y-1.5 w-full">
-          <label className="text-sm font-medium">Title</label>
-          <Input id="description" value={form.description} onChange={handleInput} placeholder="Fuel for delivery truck" className="h-9 sm:h-10 w-full" />
-        </div>
-        <div className="flex flex-col space-y-1.5 w-full">
-          <label className="text-sm font-medium">Category</label>
-          <Select onValueChange={(val) => setForm({ ...form, category: val })}>
-            <SelectTrigger className="h-9 sm:h-10 w-full text-sm">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent className="max-h-52">
-              {expenseCategories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col space-y-1.5 w-full">
-          <label className="text-sm font-medium">Amount</label>
-          <Input id="amount" type="number" value={form.amount} onChange={handleInput} placeholder="5000" className="w-full" />
-        </div>
-        <div className="flex flex-col space-y-1.5 w-full">
-          <label className="text-sm font-medium">Date</label>
-          <DatePicker selected={form.date} onChange={(d) => setForm({ ...form, date: d ?? new Date() })} className="w-full h-9 sm:h-10" />
-        </div>
-        <div className="flex flex-col space-y-1.5 w-full">
-          <label className="text-sm font-medium">Payment Method</label>
-          <Select onValueChange={(val) => setForm({ ...form, paymentMethod: val })}>
-            <SelectTrigger className="h-9 sm:h-10 w-full">
-              <SelectValue placeholder="Select method" />
-            </SelectTrigger>
-            <SelectContent>
-              {paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex justify-end">
-          <Button type="submit" className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" /> Add Expense</Button>
-        </div>
-      </form>
-    </Card>
-
-    {/* Expense Table */}
-    <Card className="p-3 sm:p-4 lg:col-span-2 overflow-x-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4">
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search expenses..." className="h-9 sm:h-10 flex-1" />
-        <Button variant="outline" size="sm" className="h-9 sm:h-10 px-4 mt-2 sm:mt-0">Filter</Button>
-      </div>
-
-      <table className="w-full text-sm">
-        <thead className="text-xs text-muted-foreground">
-          <tr>
-            <th className="text-left p-2 sm:p-3">Date</th>
-            <th className="text-left p-2 sm:p-3">Description</th>
-            <th className="text-left p-2 sm:p-3 hidden sm:table-cell">Category</th>
-            <th className="text-left p-2 sm:p-3">Amount</th>
-            <th className="text-left p-2 sm:p-3 hidden sm:table-cell">Payment</th>
-            <th className="text-center p-2 sm:p-3">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && <tr><td colSpan={6} className="p-4">Loading...</td></tr>}
-          {!loading && filtered.map(exp => (
-            <tr key={exp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-              <td className="p-2 sm:p-3 whitespace-nowrap">{exp.date}</td>
-              <td className="p-2 sm:p-3">{exp.description}</td>
-              <td className="p-2 sm:p-3 hidden sm:table-cell">{exp.category}</td>
-              <td className="p-2 sm:p-3 whitespace-nowrap">Rs {exp.amount.toFixed(2)}</td>
-              <td className="p-2 sm:p-3 hidden sm:table-cell">{exp.paymentMethod}</td>
-              <td className="p-2 sm:p-3 text-center whitespace-nowrap">
-                <div className="flex items-center justify-center gap-1">
-                  <Button variant="ghost" size="icon"><PenSquare className="w-4 h-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(exp.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {!loading && filtered.length === 0 && <tr><td colSpan={6} className="p-4">No expenses found</td></tr>}
-        </tbody>
-      </table>
-    </Card>
-  </div>
-</div>
-
   );
 };
-
-

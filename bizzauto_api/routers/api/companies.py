@@ -9,10 +9,14 @@ from crud import (
     get_company, get_companies, create_company, update_company, delete_company
 )
 
+from dependencies import set_rls_context
+from sql_models import User
+
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticCompany])
-def read_companies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@router.get("", response_model=List[PydanticCompany])
+def read_companies(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context)):
     companies = get_companies(db, skip=skip, limit=limit)
     return companies
 

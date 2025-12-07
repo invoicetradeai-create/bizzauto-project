@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
 import crud
+import dependencies as deps
+from sql_models import User
 
 router = APIRouter()
 
 @router.get("/inventory/stock-summary")
-def get_stock_summary(db: Session = Depends(get_db)):
-    summary = crud.get_stock_summary(db)
+def get_stock_summary(db: Session = Depends(deps.set_rls_context), user: User = Depends(deps.get_current_user)):
+    summary = crud.get_stock_summary(db, user_id=user.id)
     return [{"name": name, "stock_quantity": stock_quantity} for name, stock_quantity in summary]

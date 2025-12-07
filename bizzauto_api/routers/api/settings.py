@@ -8,12 +8,14 @@ from models import Setting as PydanticSetting
 from crud import (
     get_setting, get_settings, create_setting, update_setting, delete_setting
 )
+import dependencies as deps
+from sql_models import User
 
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticSetting])
-def read_settings(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    settings = get_settings(db, skip=skip, limit=limit)
+def read_settings(skip: int = 0, limit: int = 100, db: Session = Depends(deps.set_rls_context), user: User = Depends(deps.get_current_user)):
+    settings = get_settings(db, user_id=user.id, skip=skip, limit=limit)
     return settings
 
 @router.get("/{setting_id}", response_model=PydanticSetting)

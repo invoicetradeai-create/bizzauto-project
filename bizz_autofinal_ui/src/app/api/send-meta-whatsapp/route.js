@@ -3,44 +3,41 @@ import { NextResponse } from 'next/server';
 
 // This is the URL of your FastAPI backend.
 // In a real-world scenario, this should be in an environment variable.
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export async function POST(request) {
   try {
-    // 1. Get the 'to' and 'body' from the frontend request.
-    const { to, body } = await request.json();
+    const { to, message_data } = await request.json();
 
-    if (!to || !body) {
-      return NextResponse.json({ detail: 'Missing "to" or "body" in request' }, { status: 400 });
+    if (!to || !message_data) {
+      return NextResponse.json({ detail: 'Missing "to" or "message_data" in request' }, { status: 400 });
     }
 
-    // 2. Forward the request to the FastAPI backend.
+    const authHeader = request.headers.get('authorization');
+
     const backendResponse = await fetch(`${BACKEND_URL}/api/meta_whatsapp/send-meta-whatsapp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...(authHeader ? { 'Authorization': authHeader } : {}),
       },
-      body: JSON.stringify({ to, body }),
+      body: JSON.stringify({ to, message_data }),
     });
 
-    // 3. Handle the response from the backend.
     const responseData = await backendResponse.json();
 
     if (!backendResponse.ok) {
-      // If the backend returned an error, forward it to the client.
       return NextResponse.json(
         { detail: responseData.detail || 'An error occurred in the backend.' },
         { status: backendResponse.status }
       );
     }
 
-    // 4. Return the successful response to the frontend.
     return NextResponse.json(responseData, { status: 200 });
 
   } catch (error) {
     console.error('Error in Next.js API route:', error);
-    // Handle network errors or other exceptions
     return NextResponse.json({ detail: 'Internal Server Error in Next.js API route.' }, { status: 500 });
   }
 }

@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  reactCompiler: true,
+  
+  // Note: reactCompiler wali line maine hata di hai taake error na aye.
 
-  // Add this 'images' property
   images: {
     remotePatterns: [
       {

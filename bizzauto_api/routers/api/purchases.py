@@ -8,34 +8,36 @@ from models import Purchase as PydanticPurchase
 from crud import (
     get_purchase, get_purchases, create_purchase, update_purchase, delete_purchase
 )
+from dependencies import set_rls_context, get_current_user
+from sql_models import User
 
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticPurchase])
-def read_purchases(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    purchases = get_purchases(db, skip=skip, limit=limit)
+def read_purchases(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    purchases = get_purchases(db, user_id=user.id, skip=skip, limit=limit)
     return purchases
 
 @router.get("/{purchase_id}", response_model=PydanticPurchase)
-def read_purchase(purchase_id: UUID, db: Session = Depends(get_db)):
+def read_purchase(purchase_id: UUID, db: Session = Depends(set_rls_context)):
     db_purchase = get_purchase(db, purchase_id=purchase_id)
     if db_purchase is None:
         raise HTTPException(status_code=404, detail="Purchase not found")
     return db_purchase
 
 @router.post("/", response_model=PydanticPurchase)
-def create_purchase_route(purchase: PydanticPurchase, db: Session = Depends(get_db)):
-    return create_purchase(db=db, purchase=purchase)
+def create_purchase_route(purchase: PydanticPurchase, db: Session = Depends(set_rls_context), user: User = Depends(get_current_user)):
+    return create_purchase(db=db, purchase=purchase, user_id=user.id)
 
 @router.put("/{purchase_id}", response_model=PydanticPurchase)
-def update_purchase_route(purchase_id: UUID, purchase: PydanticPurchase, db: Session = Depends(get_db)):
+def update_purchase_route(purchase_id: UUID, purchase: PydanticPurchase, db: Session = Depends(set_rls_context)):
     db_purchase = update_purchase(db=db, purchase_id=purchase_id, purchase=purchase)
     if db_purchase is None:
         raise HTTPException(status_code=404, detail="Purchase not found")
     return db_purchase
 
 @router.delete("/{purchase_id}")
-def delete_purchase_route(purchase_id: UUID, db: Session = Depends(get_db)):
+def delete_purchase_route(purchase_id: UUID, db: Session = Depends(set_rls_context)):
     db_purchase = delete_purchase(db=db, purchase_id=purchase_id)
     if db_purchase is None:
         raise HTTPException(status_code=404, detail="Purchase not found")

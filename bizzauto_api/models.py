@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Json, ConfigDict, field_serializer
+from pydantic import BaseModel, Json, ConfigDict, field_serializer, Field
 from typing import Optional, List, Any
 from uuid import UUID
 from datetime import datetime, date
@@ -120,7 +120,7 @@ class PurchaseItem(BaseModel):
 
 class Expense(BaseModel):
     id: Optional[UUID] = None
-    company_id: UUID
+    company_id: Optional[UUID] = None
     title: str
     category: Optional[str] = None
     amount: float = 0
@@ -142,8 +142,9 @@ class Lead(BaseModel):
 class WhatsappLog(BaseModel):
     id: Optional[UUID] = None
     company_id: UUID
+    user_id: UUID  # Added this line
     message_type: Optional[str] = None
-    whatsapp_message_id: Optional[str] = None # Added this line
+    whatsapp_message_id: Optional[str] = None
     phone: Optional[str] = None
     message: Optional[str] = None
     status: Optional[str] = 'sent'
@@ -163,7 +164,9 @@ class ScheduledWhatsappMessage(BaseModel):
 class ScheduledWhatsappMessageCreate(BaseModel):
     phone: str
     message: str
-    scheduled_at: datetime
+    scheduled_at: Optional[datetime] = None
+
+    model_config = ConfigDict(populate_by_name=True)
 
 class UploadedDoc(BaseModel):
     id: Optional[UUID] = None

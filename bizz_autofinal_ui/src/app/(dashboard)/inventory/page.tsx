@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { apiClient } from "@/lib/api-client";
 import { API_ENDPOINTS } from "@/lib/api-config";
+import OcrUploadCard from "@/components/OcrUploadCard";
 
 
 type Product = {
@@ -46,6 +47,7 @@ export default function InventoryPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showOcrUpload, setShowOcrUpload] = useState(false);
 
   const [formData, setFormData] = useState<Product>({
     name: "",
@@ -148,7 +150,7 @@ export default function InventoryPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct?.id) return;
-    
+
     const companyId = companies[0]?.id;
     if (!companyId) {
       alert("No companies found. Please create a company first.");
@@ -265,15 +267,23 @@ export default function InventoryPage() {
             <p className="text-muted-foreground text-sm md:text-base">Track and manage your product inventory</p>
           </div>
 
-          <button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
-          >
-            <Plus className="w-4 h-4" /> Add Product
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+            >
+              <Plus className="w-4 h-4" /> Add New Product
+            </button>
+            <button
+              onClick={() => setShowOcrUpload(true)}
+              className="bg-white hover:bg-gray-100 text-black border border-black px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold cursor-pointer transition duration-200 ease-in-out hover:shadow-md"
+            >
+              PDF Upload
+            </button>
+          </div>
         </div>
 
         {/* Table */}
@@ -293,45 +303,44 @@ export default function InventoryPage() {
               </thead>
 
               <tbody>
-  {filtered.map((p, index) => {
-    const isLowStock = p.stock_quantity < 20;
-    return (
-      <tr
-        key={p.id || `${p.sku}-${index}`} // ✅ fallback if id is missing
-        className={`border-b border-border ${
-          isLowStock ? "bg-destructive/10" : "hover:bg-muted"
-        }`}
-      >
-        <td className="p-3">{p.name}</td>
-        <td className="p-3">{p.sku}</td>
-        <td className="p-3">{p.category}</td>
-        <td className="p-3">{p.stock_quantity}</td>
-        <td className="p-3">Rs {p.sale_price}</td>
-        <td className="p-3">
-          {isLowStock ? (
-            <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit">
-              <AlertTriangle className="w-3 h-3" /> Low Stock
-            </span>
-          ) : (
-            <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
-              In Stock
-            </span>
-          )}
-        </td>
-        <td className="p-3 flex justify-end gap-3">
-          <Edit3
-            onClick={() => handleEdit(p)}
-            className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-primary"
-          />
-          <Trash2
-            onClick={() => handleDelete(p.id)}
-            className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-destructive"
-          />
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
+                {filtered.map((p, index) => {
+                  const isLowStock = p.stock_quantity < 20;
+                  return (
+                    <tr
+                      key={p.id || `${p.sku}-${index}`} // ✅ fallback if id is missing
+                      className={`border-b border-border ${isLowStock ? "bg-destructive/10" : "hover:bg-muted"
+                        }`}
+                    >
+                      <td className="p-3">{p.name}</td>
+                      <td className="p-3">{p.sku}</td>
+                      <td className="p-3">{p.category}</td>
+                      <td className="p-3">{p.stock_quantity}</td>
+                      <td className="p-3">Rs {p.sale_price}</td>
+                      <td className="p-3">
+                        {isLowStock ? (
+                          <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit">
+                            <AlertTriangle className="w-3 h-3" /> Low Stock
+                          </span>
+                        ) : (
+                          <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
+                            In Stock
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 flex justify-end gap-3">
+                        <Edit3
+                          onClick={() => handleEdit(p)}
+                          className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-primary"
+                        />
+                        <Trash2
+                          onClick={() => handleDelete(p.id)}
+                          className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-destructive"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
 
             </table>
           </div>
@@ -339,8 +348,8 @@ export default function InventoryPage() {
 
         {/* Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-lg shadow-lg">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-2xl shadow-lg max-h-full overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">
                   {editingProduct ? "Edit Product" : "Add Product"}
@@ -348,59 +357,45 @@ export default function InventoryPage() {
                 <X className="cursor-pointer" onClick={() => setShowForm(false)} />
               </div>
 
-              <form onSubmit={editingProduct ? handleUpdate : handleCreate} className="space-y-3">
-                <Input
-                  placeholder="Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-                <Input
-                  placeholder="SKU"
-                  value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  required
-                />
-                <Input
-                  placeholder="Category"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                />
-                <Input
-                  placeholder="Purchase Price"
-                  type="number"
-                  value={formData.purchase_price}
-                  onChange={(e) => setFormData({ ...formData, purchase_price: Number(e.target.value) })}
-                />
-                <Input
-                  placeholder="Sale Price"
-                  type="number"
-                  value={formData.sale_price}
-                  onChange={(e) => setFormData({ ...formData, sale_price: Number(e.target.value) })}
-                />
-                <Input
-                  placeholder="Stock Quantity"
-                  type="number"
-                  value={formData.stock_quantity}
-                  onChange={(e) => setFormData({ ...formData, stock_quantity: Number(e.target.value) })}
-                />
-                <Input
-                  placeholder="Unit (e.g., pcs, kg)"
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                />
-                <Input
-                  placeholder="Low Stock Alert"
-                  type="number"
-                  value={formData.low_stock_alert}
-                  onChange={(e) => setFormData({ ...formData, low_stock_alert: Number(e.target.value) })}
-                />
-                <Input
-                  placeholder="Expiration Date"
-                  type="date"
-                  value={formData.expiration_date || ""}
-                  onChange={(e) => setFormData({ ...formData, expiration_date: e.target.value })}
-                />
+              <form onSubmit={editingProduct ? handleUpdate : handleCreate} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                    <Input id="name" placeholder="Product ka naam" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label htmlFor="sku" className="block text-sm font-medium text-gray-700 dark:text-gray-300">SKU</label>
+                    <Input id="sku" placeholder="Product ka unique code" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+                    <Input id="category" placeholder="Product ki category" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} />
+                  </div>
+                  <div>
+                    <label htmlFor="purchase_price" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Purchase Price</label>
+                    <Input id="purchase_price" type="number" placeholder="Product ka kharid price" value={formData.purchase_price} onChange={(e) => setFormData({ ...formData, purchase_price: Number(e.target.value) })} />
+                  </div>
+                  <div>
+                    <label htmlFor="sale_price" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sale Price</label>
+                    <Input id="sale_price" type="number" placeholder="Product ka bechne ka price" value={formData.sale_price} onChange={(e) => setFormData({ ...formData, sale_price: Number(e.target.value) })} />
+                  </div>
+                  <div>
+                    <label htmlFor="stock_quantity" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Stock Quantity</label>
+                    <Input id="stock_quantity" type="number" placeholder="Product ki available quantity" value={formData.stock_quantity} onChange={(e) => setFormData({ ...formData, stock_quantity: Number(e.target.value) })} />
+                  </div>
+                  <div>
+                    <label htmlFor="unit" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Unit</label>
+                    <Input id="unit" placeholder="e.g., pcs, kg (Measurement unit jaise pcs, kg)" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} />
+                  </div>
+                  <div>
+                    <label htmlFor="low_stock_alert" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Low Stock Alert</label>
+                    <Input id="low_stock_alert" type="number" placeholder="Jab stock kam ho jaye alert" value={formData.low_stock_alert} onChange={(e) => setFormData({ ...formData, low_stock_alert: Number(e.target.value) })} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label htmlFor="expiration_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Expiration Date</label>
+                    <Input id="expiration_date" type="date" placeholder="Product ki expiry date" value={formData.expiration_date || ""} onChange={(e) => setFormData({ ...formData, expiration_date: e.target.value })} />
+                  </div>
+                </div>
 
                 <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                   {editingProduct ? "Update Product" : "Create Product"}
@@ -409,6 +404,7 @@ export default function InventoryPage() {
             </div>
           </div>
         )}
+        {showOcrUpload && <OcrUploadCard onClose={() => setShowOcrUpload(false)} />}
       </div>
     </div>
   );

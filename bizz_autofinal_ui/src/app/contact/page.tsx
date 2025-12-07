@@ -1,12 +1,13 @@
 'use client';
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Phone, Mail, MessageCircle, Clock, Headphones, MapPin, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-
+import { toast } from "sonner";
 
 import { Footer } from "@/components/layout/footer";
 
@@ -16,12 +17,74 @@ import officeLahoreImg from "@/assets/office-lahore.jpg";
 import officeIslamabadImg from "@/assets/office-islamabad.jpg";
 import Image from "next/image";
 import Header from "@/components/layout/header";
+import axios from "axios";
 
 const Contact = () => {
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: ''
+  });
+  const [isSending, setIsSending] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+
+  const handleSendMessage = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const { fullName, email, phone, subject, message } = formData;
+
+    // Basic validation
+    if (!fullName || !message || !phone || !email || !subject) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      // Format phone number if needed
+      let formattedPhone = phone.replace(/[^0-9]/g, '');
+      if (formattedPhone.startsWith('0')) {
+        formattedPhone = '92' + formattedPhone.substring(1);
+      }
+
+      const payload = {
+        name: fullName,
+        email: email,
+        phone: formattedPhone,
+        subject: subject,
+        message: message
+      };
+
+      // In production, this should be an environment variable or relative path if proxied
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/contact`, payload);
+
+      if (response.status === 201 || response.status === 200) {
+        alert("Thank you! Your message has been sent. We will contact you within 24 hours.");
+        setFormData({
+          fullName: '',
+          email: '',
+          phone: '',
+          subject: '',
+          message: ''
+        });
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      alert("Message sending failed. Please try again later.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       {/* Hero Section */}
       <section className="pt-32 pb-16 px-4">
         <div className="container mx-auto max-w-6xl text-center">
@@ -32,9 +95,9 @@ const Contact = () => {
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
             Let&apos;s Start a{" "}
-<span className="bg-gradient-to-r from-blue-500 via-purple-500 to-blue-700 bg-clip-text text-transparent">
-  Conversation
-</span>
+            <span className="bg-gradient-to-r from-blue-500 via-purple-500 to-blue-700 bg-clip-text text-transparent">
+              Conversation
+            </span>
 
           </h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
@@ -97,59 +160,74 @@ const Contact = () => {
                 <p className="text-muted-foreground mb-6">
                   Fill out the form below and we&apos;ll get back to you within 24 hours
                 </p>
-                
+
                 <form className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="fullName">Full Name *</Label>
-                      <Input 
-                        id="fullName" 
-                        placeholder="Ahmed Khan" 
+                      <Input
+                        id="fullName"
+                        placeholder="Ahmed Khan"
                         className="mt-2"
+                        value={formData.fullName}
+                        onChange={handleChange}
                       />
                     </div>
                     <div>
                       <Label htmlFor="email">Email Address *</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="ahmed@example.com" 
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="ahmed@example.com"
                         className="mt-2"
+                        value={formData.email}
+                        onChange={handleChange}
                       />
                     </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input 
-                        id="phone" 
-                        placeholder="+92 300 1234567" 
+                      <Label htmlFor="phone">Phone Number *</Label>
+                      <Input
+                        id="phone"
+                        placeholder="+92 300 1234567"
                         className="mt-2"
+                        value={formData.phone}
+                        onChange={handleChange}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="company">Company Name</Label>
-                      <Input 
-                        id="company" 
-                        placeholder="Your Company" 
+                      <Label htmlFor="subject">Subject *</Label>
+                      <Input
+                        id="subject"
+                        placeholder="Inquiry about services"
                         className="mt-2"
+                        value={formData.subject}
+                        onChange={handleChange}
                       />
                     </div>
                   </div>
 
                   <div>
                     <Label htmlFor="message">Message *</Label>
-                    <Textarea 
-                      id="message" 
-                      placeholder="Tell us about your business needs and how we can help..." 
+                    <Textarea
+                      id="message"
+                      placeholder="Tell us about your business needs and how we can help..."
                       className="mt-2 min-h-[120px]"
+                      value={formData.message}
+                      onChange={handleChange}
                     />
                   </div>
 
-                  <Button className="w-full bg-gradient-primary hover:opacity-90">
+                  <Button
+                    className="w-full btn-gradient text-white shadow-lg hover:opacity-90"
+                    onClick={handleSendMessage}
+                    type="button"
+                    disabled={isSending}
+                  >
                     <Send className="w-4 h-4 mr-2" />
-                    Send Message
+                    {isSending ? 'Sending...' : 'Send Message'}
                   </Button>
                 </form>
               </CardContent>
@@ -206,8 +284,8 @@ const Contact = () => {
 
               <div className="relative rounded-2xl overflow-hidden h-[200px]">
                 <Image
-                  src={supportTeamImg} 
-                  alt="Dedicated Support Team" 
+                  src={supportTeamImg}
+                  alt="Dedicated Support Team"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-6">
@@ -239,8 +317,8 @@ const Contact = () => {
             <Card className="overflow-hidden hover:shadow-xl transition-shadow">
               <div className="h-48 overflow-hidden">
                 <Image
-                  src={officeKarachiImg} 
-                  alt="Karachi Office" 
+                  src={officeKarachiImg}
+                  alt="Karachi Office"
                   className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
                 />
               </div>
@@ -256,8 +334,8 @@ const Contact = () => {
             <Card className="overflow-hidden hover:shadow-xl transition-shadow">
               <div className="h-48 overflow-hidden">
                 <Image
-                  src={officeLahoreImg} 
-                  alt="Lahore Office" 
+                  src={officeLahoreImg}
+                  alt="Lahore Office"
                   className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
                 />
               </div>
@@ -273,8 +351,8 @@ const Contact = () => {
             <Card className="overflow-hidden hover:shadow-xl transition-shadow">
               <div className="h-48 overflow-hidden">
                 <Image
-                  src={officeIslamabadImg} 
-                  alt="Islamabad Office" 
+                  src={officeIslamabadImg}
+                  alt="Islamabad Office"
                   className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
                 />
               </div>

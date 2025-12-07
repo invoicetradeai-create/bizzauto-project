@@ -45,10 +45,12 @@ export function HeroSection() {
               </p>
 
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                <Button size="lg" className="btn-gradient text-white shadow-lg">
-                  Start Free 14-Day Trial
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                <Link href="/signUp">
+                  <Button size="lg" className="btn-gradient text-white shadow-lg">
+                    Start Free 7-Day Trial
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
                 <Button size="lg" variant="outline" className="bg-white dark:bg-gray-900">
                   Schedule a Demo
                 </Button>
@@ -89,10 +91,10 @@ export function HeroSection() {
               </div>
 
               {/* Floating stat cards */}
-       <div className="absolute -bottom-6 right-0 sm:-bottom-8 sm:-right-8 rounded-lg border border-gray-200 bg-white/80 p-3 sm:p-4 shadow-xl backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/80 flex flex-col items-start text-left">
-  <p className="text-[10px] sm:text-xs text-gray-500">Time Saved/Week</p>
-  <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">20hrs</p>
-</div>
+              <div className="absolute -bottom-6 right-0 sm:-bottom-8 sm:-right-8 rounded-lg border border-gray-200 bg-white/80 p-3 sm:p-4 shadow-xl backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/80 flex flex-col items-start text-left">
+                <p className="text-[10px] sm:text-xs text-gray-500">Time Saved/Week</p>
+                <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">20hrs</p>
+              </div>
 
               <div className="absolute -bottom-4 left-4 rounded-lg border border-gray-200 bg-white/80 p-3 shadow-xl backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/80">
                 <p className="text-xs text-gray-500">Revenue Growth</p>

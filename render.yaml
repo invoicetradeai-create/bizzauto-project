@@ -58,7 +58,7 @@ databases:
     dockerContext: .
     rootDir: ./bizzauto_api
     plan: free
-    command: python scheduler_worker.py
+    command: python worker.py
     envVars:
       - key: DATABASE_URL
         fromDatabase:

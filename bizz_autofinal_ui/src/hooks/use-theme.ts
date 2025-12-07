@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -7,7 +6,7 @@ type Theme = "light" | "dark";
 
 export function useTheme() {
   const [mounted, setMounted] = useState(false);
-  
+
   // Safely get the initial theme on the client side only
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {

@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from sql_models import (
     Company, Product, Client, User, Supplier, Invoice, InvoiceItem, Purchase, PurchaseItem, Expense, Lead, WhatsappLog, UploadedDoc, Setting, ScheduledWhatsappMessage
 )
+import json
+
 from models import (
     Company as PydanticCompany, 
     Product as PydanticProduct, 
@@ -36,6 +38,9 @@ def create_company(db: Session, company: PydanticCompany):
     db.refresh(db_company)
     return db_company
 
+def get_company_by_phone_number_id(db: Session, phone_number_id: str):
+    return db.query(Company).filter(Company.phone_number_id == phone_number_id).first()
+
 def update_company(db: Session, company_id: UUID, company: PydanticCompany):
     db_company = db.query(Company).filter(Company.id == company_id).first()
     if db_company:
@@ -52,20 +57,26 @@ def delete_company(db: Session, company_id: UUID):
         db.commit()
     return db_company
 
-def get_product(db: Session, product_id: UUID):
-    return db.query(Product).filter(Product.id == product_id).first()
+def get_product(db: Session, product_id: UUID, user_id: UUID, company_id: UUID):
+    return db.query(Product).filter(Product.id == product_id, Product.user_id == user_id, Product.company_id == company_id).first()
 
-def get_product_by_name(db: Session, name: str):
-    return db.query(Product).filter(Product.name.ilike(f"%{name}%")).first()
+def get_product_by_name(db: Session, name: str, company_id: UUID, user_id: UUID = None):
+    query = db.query(Product).filter(
+        Product.company_id == company_id,
+        Product.name.ilike(f"%{name}%")
+    )
+    if user_id:
+        query = query.filter(Product.user_id == user_id)
+    return query.first()
 
-def get_products(db: Session, skip: int = 0, limit: int = 100, company_id: UUID = None):
-    query = db.query(Product)
+def get_products(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    query = db.query(Product).filter(Product.user_id == user_id)
     if company_id:
         query = query.filter(Product.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_product(db: Session, product: PydanticProduct):
-    db_product = Product(**product.model_dump(exclude_none=True))
+def create_product(db: Session, product: PydanticProduct, user_id: UUID, company_id: UUID):
+    db_product = Product(**product.model_dump(exclude={'company_id', 'user_id'}), user_id=user_id, company_id=company_id)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
@@ -87,8 +98,8 @@ def delete_product(db: Session, product_id: UUID):
         db.commit()
     return db_product
 
-def get_stock_summary(db: Session):
-    return db.query(Product.name, Product.stock_quantity).all()
+def get_stock_summary(db: Session, user_id: UUID):
+    return db.query(Product.name, Product.stock_quantity).filter(Product.user_id == user_id).all()
 
 def get_alert_products(db: Session, company_id: UUID, days_to_expiry: int = 30):
     """
@@ -110,14 +121,14 @@ def get_client_by_name(db: Session, name: str):
     return db.query(Client).filter(Client.name == name).first()
 
 
-def get_clients(db: Session, skip: int = 0, limit: int = 100, company_id: UUID = None):
-    query = db.query(Client)
+def get_clients(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    query = db.query(Client).filter(Client.user_id == user_id)
     if company_id:
         query = query.filter(Client.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_client(db: Session, client: PydanticClient):
-    db_client = Client(**client.model_dump(exclude_none=True))
+def create_client(db: Session, client: PydanticClient, user_id: UUID, company_id: UUID):
+    db_client = Client(**client.model_dump(exclude={'company_id', 'user_id'}), user_id=user_id, company_id=company_id)
     db.add(db_client)
     db.commit()
     db.refresh(db_client)
@@ -171,11 +182,11 @@ def delete_user(db: Session, user_id: UUID):
 def get_supplier(db: Session, supplier_id: UUID):
     return db.query(Supplier).filter(Supplier.id == supplier_id).first()
 
-def get_suppliers(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Supplier).offset(skip).limit(limit).all()
+def get_suppliers(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
+    return db.query(Supplier).filter(Supplier.user_id == user_id).offset(skip).limit(limit).all()
 
-def create_supplier(db: Session, supplier: PydanticSupplier):
-    db_supplier = Supplier(**supplier.model_dump(exclude_none=True))
+def create_supplier(db: Session, supplier: PydanticSupplier, user_id: UUID):
+    db_supplier = Supplier(**supplier.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_supplier)
     db.commit()
     db.refresh(db_supplier)
@@ -200,16 +211,16 @@ def delete_supplier(db: Session, supplier_id: UUID):
 def get_invoice(db: Session, invoice_id: UUID):
     return db.query(Invoice).filter(Invoice.id == invoice_id).first()
 
-def get_invoices(db: Session, skip: int = 0, limit: int = 100, company_id: UUID = None):
-    query = db.query(Invoice)
+def get_invoices(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    query = db.query(Invoice).filter(Invoice.user_id == user_id)
     if company_id:
         query = query.filter(Invoice.company_id == company_id)
     return query.offset(skip).limit(limit).all()
 
-def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID):
+def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID, user_id: UUID):
     # Extract items and create the main invoice object
     invoice_data = invoice.model_dump(exclude={'items', 'company_id'})
-    db_invoice = Invoice(**invoice_data, company_id=company_id)
+    db_invoice = Invoice(**invoice_data, company_id=company_id, user_id=user_id)
     db.add(db_invoice)
     db.commit() # Commit to get the db_invoice.id
     db.refresh(db_invoice)
@@ -218,7 +229,7 @@ def create_invoice(db: Session, invoice: PydanticInvoice, company_id: UUID):
     # Now create the invoice items
     if invoice.items:
         for item_data in invoice.items:
-            db_item = InvoiceItem(**item_data.model_dump(), invoice_id=db_invoice.id)
+            db_item = InvoiceItem(**item_data.model_dump(), invoice_id=db_invoice.id, user_id=user_id)
             db.add(db_item)
             print(f"Creating invoice item for product ID: {db_item.product_id}")
     
@@ -256,6 +267,7 @@ def update_invoice(db: Session, invoice_id: UUID, invoice_data: PydanticInvoice)
                 new_item = InvoiceItem(
                     invoice_id=db_invoice.id,
                     product_id=item_data.product_id,
+                    user_id=db_invoice.user_id, # Inherit user_id from invoice
                     quantity=item_data.quantity,
                     price=item_data.price,
                     total=item_data.total
@@ -292,8 +304,8 @@ def delete_invoice(db: Session, invoice_id: UUID):
 def get_invoice_item(db: Session, invoice_item_id: UUID):
     return db.query(InvoiceItem).filter(InvoiceItem.id == invoice_item_id).first()
 
-def get_invoice_items(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(InvoiceItem).offset(skip).limit(limit).all()
+def get_invoice_items(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
+    return db.query(InvoiceItem).filter(InvoiceItem.user_id == user_id).offset(skip).limit(limit).all()
 
 def create_invoice_item(db: Session, invoice_item: PydanticInvoiceItem):
     db_invoice_item = InvoiceItem(**invoice_item.model_dump(exclude_none=True))
@@ -321,11 +333,11 @@ def delete_invoice_item(db: Session, invoice_item_id: UUID):
 def get_purchase(db: Session, purchase_id: UUID):
     return db.query(Purchase).filter(Purchase.id == purchase_id).first()
 
-def get_purchases(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Purchase).offset(skip).limit(limit).all()
+def get_purchases(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
+    return db.query(Purchase).filter(Purchase.user_id == user_id).offset(skip).limit(limit).all()
 
-def create_purchase(db: Session, purchase: PydanticPurchase):
-    db_purchase = Purchase(**purchase.model_dump(exclude_none=True))
+def create_purchase(db: Session, purchase: PydanticPurchase, user_id: UUID):
+    db_purchase = Purchase(**purchase.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_purchase)
     db.commit()
     db.refresh(db_purchase)
@@ -350,8 +362,8 @@ def delete_purchase(db: Session, purchase_id: UUID):
 def get_purchase_item(db: Session, purchase_item_id: UUID):
     return db.query(PurchaseItem).filter(PurchaseItem.id == purchase_item_id).first()
 
-def get_purchase_items(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(PurchaseItem).offset(skip).limit(limit).all()
+def get_purchase_items(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
+    return db.query(PurchaseItem).filter(PurchaseItem.user_id == user_id).offset(skip).limit(limit).all()
 
 def create_purchase_item(db: Session, purchase_item: PydanticPurchaseItem):
     db_purchase_item = PurchaseItem(**purchase_item.model_dump(exclude_none=True))
@@ -376,21 +388,35 @@ def delete_purchase_item(db: Session, purchase_item_id: UUID):
         db.commit()
     return db_purchase_item
 
-def get_expense(db: Session, expense_id: UUID):
-    return db.query(Expense).filter(Expense.id == expense_id).first()
+def get_expense(db: Session, expense_id: UUID, user_id: UUID = None, company_id: UUID = None):
+    query = db.query(Expense).filter(Expense.id == expense_id)
+    if user_id and company_id:
+        query = query.filter(Expense.user_id == user_id, Expense.company_id == company_id)
+    return query.first()
 
-def get_expenses(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Expense).offset(skip).limit(limit).all()
+def get_expenses(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    if company_id:
+        query = db.query(Expense).filter(Expense.company_id == company_id)
+    else:
+        query = db.query(Expense).filter(Expense.user_id == user_id)
+    return query.offset(skip).limit(limit).all()
 
-def create_expense(db: Session, expense: PydanticExpense):
-    db_expense = Expense(**expense.model_dump(exclude_none=True))
+# crud.py mein verify karein
+def create_expense(db: Session, expense: PydanticExpense, user_id: UUID, company_id: UUID):
+    # 'user_id' and 'company_id' ko dump se exclude karna ZAROORI hai
+    expense_data = expense.model_dump(exclude={'user_id', 'company_id'}, exclude_none=True)
+
+    db_expense = Expense(**expense_data, user_id=user_id, company_id=company_id)
     db.add(db_expense)
     db.commit()
     db.refresh(db_expense)
     return db_expense
 
-def update_expense(db: Session, expense_id: UUID, expense: PydanticExpense):
-    db_expense = db.query(Expense).filter(Expense.id == expense_id).first()
+def update_expense(db: Session, expense_id: UUID, expense: PydanticExpense, user_id: UUID = None, company_id: UUID = None):
+    query = db.query(Expense).filter(Expense.id == expense_id)
+    if user_id and company_id:
+        query = query.filter(Expense.user_id == user_id, Expense.company_id == company_id)
+    db_expense = query.first()
     if db_expense:
         for key, value in expense.model_dump(exclude_unset=True).items():
             setattr(db_expense, key, value)
@@ -398,8 +424,11 @@ def update_expense(db: Session, expense_id: UUID, expense: PydanticExpense):
         db.refresh(db_expense)
     return db_expense
 
-def delete_expense(db: Session, expense_id: UUID):
-    db_expense = db.query(Expense).filter(Expense.id == expense_id).first()
+def delete_expense(db: Session, expense_id: UUID, user_id: UUID = None, company_id: UUID = None):
+    query = db.query(Expense).filter(Expense.id == expense_id)
+    if user_id and company_id:
+        query = query.filter(Expense.user_id == user_id, Expense.company_id == company_id)
+    db_expense = query.first()
     if db_expense:
         db.delete(db_expense)
         db.commit()
@@ -408,11 +437,11 @@ def delete_expense(db: Session, expense_id: UUID):
 def get_lead(db: Session, lead_id: UUID):
     return db.query(Lead).filter(Lead.id == lead_id).first()
 
-def get_leads(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Lead).offset(skip).limit(limit).all()
+def get_leads(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
+    return db.query(Lead).filter(Lead.user_id == user_id).offset(skip).limit(limit).all()
 
-def create_lead(db: Session, lead: PydanticLead):
-    db_lead = Lead(**lead.model_dump(exclude_none=True))
+def create_lead(db: Session, lead: PydanticLead, user_id: UUID):
+    db_lead = Lead(**lead.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_lead)
     db.commit()
     db.refresh(db_lead)
@@ -437,8 +466,8 @@ def delete_lead(db: Session, lead_id: UUID):
 def get_whatsapp_log(db: Session, whatsapp_log_id: UUID):
     return db.query(WhatsappLog).filter(WhatsappLog.id == whatsapp_log_id).first()
 
-def get_whatsapp_logs(db: Session, skip: int = 0, limit: int = 100, company_id: UUID = None):
-    query = db.query(WhatsappLog)
+def get_whatsapp_logs(db: Session, user_id: UUID, skip: int = 0, limit: int = 100, company_id: UUID = None):
+    query = db.query(WhatsappLog).filter(WhatsappLog.user_id == user_id)
     if company_id:
         query = query.filter(WhatsappLog.company_id == company_id)
     return query.offset(skip).limit(limit).all()
@@ -484,18 +513,29 @@ def delete_whatsapp_log(db: Session, whatsapp_log_id: UUID):
 def get_scheduled_whatsapp_message(db: Session, message_id: UUID):
     return db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.id == message_id).first()
 
-def get_scheduled_whatsapp_messages(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(ScheduledWhatsappMessage).order_by(ScheduledWhatsappMessage.scheduled_at.desc()).offset(skip).limit(limit).all()
+def get_scheduled_whatsapp_messages(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
+    return db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.user_id == user_id).order_by(ScheduledWhatsappMessage.scheduled_at.desc()).offset(skip).limit(limit).all()
 
 def get_pending_scheduled_whatsapp_messages(db: Session):
     return db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.status == 'pending', ScheduledWhatsappMessage.scheduled_at <= datetime.utcnow()).all()
 
-def create_scheduled_whatsapp_message(db: Session, scheduled_message: PydanticScheduledWhatsappMessage):
-    db_message = ScheduledWhatsappMessage(**scheduled_message.model_dump())
+def create_scheduled_whatsapp_message(db: Session, scheduled_message: PydanticScheduledWhatsappMessage, user_id: UUID):
+    print(f"Creating scheduled message for user {user_id}")
+    # Exclude 'id' to let the database generate it, and 'status' if it's default
+    message_data = scheduled_message.model_dump(exclude={'id'}, exclude_none=True)
+    print(f"Message data to insert: {message_data}")
+    
+    db_message = ScheduledWhatsappMessage(**message_data, user_id=user_id)
     db.add(db_message)
-    db.commit()
-    db.refresh(db_message)
-    return db_message
+    try:
+        db.commit()
+        db.refresh(db_message)
+        print(f"Successfully created scheduled message with ID: {db_message.id}")
+        return db_message
+    except Exception as e:
+        db.rollback()
+        print(f"Error creating scheduled message: {e}")
+        raise
 
 def update_scheduled_whatsapp_message(db: Session, message_id: UUID, scheduled_message: PydanticScheduledWhatsappMessage):
     db_message = db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.id == message_id).first()
@@ -511,11 +551,11 @@ def update_scheduled_whatsapp_message(db: Session, message_id: UUID, scheduled_m
 def get_uploaded_doc(db: Session, uploaded_doc_id: UUID):
     return db.query(UploadedDoc).filter(UploadedDoc.id == uploaded_doc_id).first()
 
-def get_uploaded_docs(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(UploadedDoc).offset(skip).limit(limit).all()
+def get_uploaded_docs(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
+    return db.query(UploadedDoc).filter(UploadedDoc.user_id == user_id).offset(skip).limit(limit).all()
 
-def create_uploaded_doc(db: Session, uploaded_doc: PydanticUploadedDoc):
-    db_uploaded_doc = UploadedDoc(**uploaded_doc.model_dump(exclude_none=True))
+def create_uploaded_doc(db: Session, uploaded_doc: PydanticUploadedDoc, user_id: UUID):
+    db_uploaded_doc = UploadedDoc(**uploaded_doc.model_dump(exclude_none=True), user_id=user_id)
     db.add(db_uploaded_doc)
     db.commit()
     db.refresh(db_uploaded_doc)
@@ -540,8 +580,8 @@ def delete_uploaded_doc(db: Session, uploaded_doc_id: UUID):
 def get_setting(db: Session, setting_id: UUID):
     return db.query(Setting).filter(Setting.id == setting_id).first()
 
-def get_settings(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Setting).offset(skip).limit(limit).all()
+def get_settings(db: Session, user_id: UUID, skip: int = 0, limit: int = 100):
+    return db.query(Setting).filter(Setting.user_id == user_id).offset(skip).limit(limit).all()
 
 def create_setting(db: Session, setting: PydanticSetting):
     setting_data = setting.model_dump(exclude_none=True)
@@ -572,5 +612,3 @@ def delete_setting(db: Session, setting_id: UUID):
         db.delete(db_setting)
         db.commit()
     return db_setting
-
-
