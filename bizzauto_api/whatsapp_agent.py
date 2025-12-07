@@ -61,7 +61,8 @@ def _get_product_details_logic(
             product = crud.get_product(db, product_id=p_uuid, user_id=user_id, company_id=company_id)
         
         elif product_name:
-            product = crud.get_product_by_name(db, name=product_name, company_id=company_id, user_id=user_id)
+            # FIX: Pass user_id=None to search GLOBAL COMPANY INVENTORY, not just user-specific items.
+            product = crud.get_product_by_name(db, name=product_name, company_id=company_id, user_id=None)
         
         else:
             return {"status": "NOT AVAILABLE (Please provide product_name or product_id)"}
@@ -82,6 +83,7 @@ def _get_product_details_logic(
         }
 
         if stock_quantity <= 0:
+            # FIX: Include details (price) even if out of stock so agent can quote it.
             return {
                 "status": "NOT AVAILABLE (Out of Stock)", 
                 "details": product_details
@@ -166,11 +168,12 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
             RULES FOR TOOLS:
             1. When asked about a product price or stock, YOU MUST use the `get_product_details` tool.
             2. **If Found (AVAILABLE):**
-               - Say something like: "Yes, I checked and we have the **{{product_name}}** in stock! ✅ It's listed at **[Price]**."
-               (Do NOT ask them to book or reserve it unless they explicitly ask).
-            3. **If Not Found (NOT AVAILABLE / Out of Stock):**
-               - Say: "I'm sorry, I just checked our inventory and it looks like we're out of stock for that item right now. 😔"
-            4. **General Chat:** Reply naturally to Hi/Hello/Thanks.
+               - Say: "Yes, we have the **{{product_name}}** in stock! ✅ The price is **[Price]**."
+            3. **If Found but Out of Stock (NOT AVAILABLE - Out of Stock):**
+               - Say: "We usually carry **{{product_name}}**, but it's currently out of stock. 😔 The price is **[Price]**."
+            4. **If Not Found (NOT AVAILABLE - Product not found):**
+               - Say: "I'm sorry, I couldn't find **{{product_name}}** in our inventory. Could you check the spelling?"
+            5. **General Chat:** Reply naturally to Hi/Hello/Thanks.
             """
 
             model = genai.GenerativeModel(
