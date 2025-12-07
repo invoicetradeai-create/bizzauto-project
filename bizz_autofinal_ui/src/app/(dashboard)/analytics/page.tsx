@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
           console.log("💬 WhatsApp Logs data received:", whatsappLogsRes.data.length, "items");
         }
 
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage = `Failed to fetch analytics data: ${err.message || err}`;
         setError(errorMessage);
         console.error("❌ Error fetching analytics data:", err);
