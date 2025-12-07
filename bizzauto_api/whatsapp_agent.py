@@ -101,6 +101,11 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
     Async wrapper that handles the chat logic.
     Ensures 'company_id' is passed to the tool for isolation.
     """
+    # Critical Check for API Key
+    if not api_key:
+        print("❌ ERROR: GEMINI_API_KEY not found in environment.")
+        return "Service Configuration Error: AI API Key is missing. Please check server logs."
+
     try:
         # 1. Create Chat Session if not exists
         if phone_number not in chat_sessions:
