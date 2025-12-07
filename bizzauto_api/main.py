@@ -95,26 +95,18 @@ async def startup_event():
 
     # Google Cloud Vision API Credentials Initialization
     try:
-        creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-        if creds_path:
-            # Fix potential malformed path (e.g., "C:\ \Users")
-            if not os.path.exists(creds_path):
-                logging.warning(f"⚠️ GOOGLE_APPLICATION_CREDENTIALS path not found: '{creds_path}'")
-                
-                # Attempt to fix common typos
-                fixed_path = creds_path.replace(" \ ", "\\").replace("\ ", "\\")
-                if os.path.exists(fixed_path):
-                    logging.info(f"✅ Found corrected credentials path: '{fixed_path}'")
-                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = fixed_path
-                else:
-                    logging.warning("⚠️ Could not auto-correct path. Unsetting variable to try JSON fallback.")
-                    del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
-            else:
-                logging.info("✅ Using GOOGLE_APPLICATION_CREDENTIALS from environment.")
+        # Explicitly set the correct path using a raw string to avoid escape sequence issues
+        correct_path = r"C:\Users\YOusuf Traders\Documents\quarter-4\BizzAuto_new\vision-api.json"
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = correct_path
+        logging.info(f"✅ Explicitly set GOOGLE_APPLICATION_CREDENTIALS to: {correct_path}")
 
-        if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            pass # Credentials are set and valid
+        if os.path.exists(correct_path):
+             logging.info("✅ Credentials file verified to exist at the specified path.")
         else:
+             logging.error(f"❌ Credentials file NOT found at: {correct_path}")
+
+        # Fallback to JSON if explicit path somehow fails (though unlikely if file exists)
+        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
             creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
             if not creds_json:
                 logging.warning("⚠️ GOOGLE_APPLICATION_CREDENTIALS_JSON not set. OCR features will not work.")
