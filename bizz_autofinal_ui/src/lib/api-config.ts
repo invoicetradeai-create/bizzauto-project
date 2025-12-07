@@ -4,6 +4,8 @@ export const API_ENDPOINTS = {
   companies: '/api/companies',
   products: '/api/products',
   invoices: '/api/invoice-processing/invoices',
+  invoiceUpload: '/api/invoice-processing/upload-invoice', // For file uploads
+  invoice: '/api/invoice-processing/invoice', // For manual CRUD
   expenses: '/api/expenses',
   whatsappLogs: '/api/whatsapp_logs',
   scheduledWhatsappMessages: '/api/scheduled-whatsapp-messages',
