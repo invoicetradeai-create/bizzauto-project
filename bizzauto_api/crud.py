@@ -22,8 +22,9 @@ from models import (
     ScheduledWhatsappMessage as PydanticScheduledWhatsappMessage
 )
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from sqlalchemy import func
+from dateutil import parser
 
 def get_company(db: Session, company_id: UUID):
     return db.query(Company).filter(Company.id == company_id).first()
@@ -672,12 +673,21 @@ def create_invoice_from_ocr(db: Session, ocr_data: dict, company_id: UUID, user_
     """
     processed_items_count = 0
     try:
+        # Parse invoice date
+        invoice_date_str = ocr_data.get('invoice_date')
+        invoice_date = date.today()
+        if invoice_date_str:
+            try:
+                invoice_date = parser.parse(str(invoice_date_str)).date()
+            except Exception as e:
+                logger.warning(f"Could not parse date '{invoice_date_str}': {e}. Using today's date.")
+
         # 1. Create the main invoice record
         db_invoice = Invoice(
             company_id=company_id,
             user_id=user_id,
             client_id=client_id,
-            invoice_date=ocr_data.get('invoice_date'),
+            invoice_date=invoice_date,
             total_amount=ocr_data.get('total_amount', 0.0),
             payment_status='unpaid'
         )
@@ -688,9 +698,9 @@ def create_invoice_from_ocr(db: Session, ocr_data: dict, company_id: UUID, user_
         for item_data in ocr_data.get("line_items", []):
             # Find the product in the database
             product = find_product_by_name(db, item_data["name"], company_id)
-            
+
             if not product:
-                logger.warning(f"Product not found: '{item_data['name']}'. Skipping item.")
+                logger.warning(f"Product not found: '{item_data['name']}'. Skipping item.")        
                 continue
 
             # Create the invoice item
@@ -711,9 +721,9 @@ def create_invoice_from_ocr(db: Session, ocr_data: dict, company_id: UUID, user_
                     logger.warning(f"Stock for product {product.name} ({product.id}) is going negative. Setting to 0.")
                     new_stock = 0
                 product.stock_quantity = new_stock
-            
+
             processed_items_count += 1
-        
+
         db.commit()
         db.refresh(db_invoice)
         return db_invoice, processed_items_count
@@ -722,4 +732,3 @@ def create_invoice_from_ocr(db: Session, ocr_data: dict, company_id: UUID, user_
         db.rollback()
         logger.error(f"Error creating invoice from OCR data: {e}")
         raise
-
