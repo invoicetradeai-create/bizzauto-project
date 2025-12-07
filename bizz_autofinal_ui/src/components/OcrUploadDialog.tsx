@@ -12,6 +12,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { apiClient } from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/lib/api-config";
 
 interface OcrUploadDialogProps {
   open: boolean;
