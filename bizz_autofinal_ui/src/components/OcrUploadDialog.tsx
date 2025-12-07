@@ -47,7 +47,7 @@ export default function OcrUploadDialog({ open, onOpenChange, onUploadSuccess }:
     formData.append("file", file);
 
     try {
-      const response = await apiClient.post("/api/ocr/upload", formData, {
+      const response = await apiClient.post(API_ENDPOINTS.invoiceUpload, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
