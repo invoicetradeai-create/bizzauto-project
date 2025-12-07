@@ -95,8 +95,25 @@ async def startup_event():
 
     # Google Cloud Vision API Credentials Initialization
     try:
+        creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        if creds_path:
+            # Fix potential malformed path (e.g., "C:\ \Users")
+            if not os.path.exists(creds_path):
+                logging.warning(f"⚠️ GOOGLE_APPLICATION_CREDENTIALS path not found: '{creds_path}'")
+                
+                # Attempt to fix common typos
+                fixed_path = creds_path.replace(" \ ", "\\").replace("\ ", "\\")
+                if os.path.exists(fixed_path):
+                    logging.info(f"✅ Found corrected credentials path: '{fixed_path}'")
+                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = fixed_path
+                else:
+                    logging.warning("⚠️ Could not auto-correct path. Unsetting variable to try JSON fallback.")
+                    del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+            else:
+                logging.info("✅ Using GOOGLE_APPLICATION_CREDENTIALS from environment.")
+
         if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            logging.info("✅ Using GOOGLE_APPLICATION_CREDENTIALS from environment.")
+            pass # Credentials are set and valid
         else:
             creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
             if not creds_json:
@@ -108,8 +125,8 @@ async def startup_event():
                 with open("/tmp/gcp_creds.json", "w") as f:
                     json.dump(creds_dict, f)
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/gcp_creds.json"
-                logging.info("✅ Google Cloud Vision API credentials configured")
-    except (ValueError, KeyError, json.JSONDecodeError) as e:
+                logging.info("✅ Google Cloud Vision API credentials configured from JSON")
+    except (ValueError, KeyError, json.JSONDecodeError, OSError) as e:
         logging.error(f"❌ Error configuring Google Cloud Vision API: {e}")
 
     # Gemini API Key Configuration
