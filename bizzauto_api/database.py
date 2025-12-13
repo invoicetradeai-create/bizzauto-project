@@ -15,13 +15,13 @@ if DATABASE_URL:
     try:
         engine = create_engine(DATABASE_URL, pool_pre_ping=True, poolclass=NullPool)
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        print("✅ PostgreSQL database connected")
+        print("[OK] PostgreSQL database connected")
     except Exception as e:
-        print(f"⚠️ PostgreSQL connection failed: {e}")
+        print(f"[WARN] PostgreSQL connection failed: {e}")
         engine = None
         SessionLocal = None
 else:
-    print("⚠️ DATABASE_URL not set - SQLAlchemy database features will be disabled.")
+    print("[WARN] DATABASE_URL not set - SQLAlchemy database features will be disabled.")
 
 Base = declarative_base()
 
@@ -58,12 +58,12 @@ supabase: Optional[Client] = None
 if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        print("✅ Supabase client connected")
+        print("[OK] Supabase client connected")
     except Exception as e:
-        print(f"⚠️ Supabase connection failed: {e}")
+        print(f"[WARN] Supabase connection failed: {e}")
         supabase = None
 else:
-    print("⚠️ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set - Supabase features will be disabled.")
+    print("[WARN] SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set - Supabase features will be disabled.")
 
 def get_supabase() -> Client:
     """

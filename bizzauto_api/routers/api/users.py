@@ -14,21 +14,8 @@ from sql_models import User
 router = APIRouter()
 
 @router.get("/", response_model=List[PydanticUser])
-def read_users():
-    print("DEBUG: read_users endpoint hit!")
-    dummy_user = {
-        "id": "00000000-0000-0000-0000-000000000001",
-        "company_id": "00000000-0000-0000-0000-000000000001",
-        "full_name": "Test User",
-        "email": "test@example.com",
-        "role": "user",
-        "business_name": "Test Business",
-        "location": "Test Location",
-        "contact_number": "1234567890",
-        "status": "active",
-        "created_at": "2023-01-01T00:00:00Z"
-    }
-    return [dummy_user]
+def read_users(current_user: PydanticUser = Depends(deps.get_current_admin), db: Session = Depends(deps.set_rls_context)):
+    return get_users(db, skip=0, limit=100)
 
 @router.get("/me", response_model=PydanticUser)
 def read_users_me(current_user: PydanticUser = Depends(deps.get_current_user)):
@@ -42,10 +29,16 @@ def read_user(user_id: UUID, db: Session = Depends(deps.set_rls_context)):
     return db_user
 
 @router.post("/", response_model=PydanticUser)
-def create_user_route(user: PydanticUser, db: Session = Depends(deps.set_rls_context)):
+def create_user_route(user: PydanticUser, db: Session = Depends(get_db)):
     print("--- Creating User ---")
     print(user.model_dump_json(indent=2))
     print("---------------------")
+    # Validate that required fields are present for signup
+    if not user.company_id or not user.full_name or not user.email or not user.role:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Missing required fields for user creation")
+
+    # Additional validation could be added here if needed
     return create_user(db=db, user=user)
 
 @router.put("/{user_id}", response_model=PydanticUser)

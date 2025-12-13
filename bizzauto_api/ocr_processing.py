@@ -68,6 +68,13 @@ def parse_invoice_text(text: str) -> Dict[str, Any]:
         "line_items": []
     }
 
+    # Check if the text matches the inventory format (ITEM CODE, ITEM NAME, BALANCE QUANTITY)
+    if is_inventory_format(text):
+        logger.info("Detected inventory format - parsing as inventory list")
+        parsed_data["line_items"] = parse_inventory_format(text)
+        parsed_data["total_amount"] = calculate_inventory_total(parsed_data["line_items"])
+        return parsed_data
+
     # 1. Extract Invoice Date
     # Regex for various date formats (DD/MM/YYYY, MM-DD-YYYY, YYYY-MM-DD, Month DD, YYYY)
     date_patterns = [
@@ -97,7 +104,7 @@ def parse_invoice_text(text: str) -> Dict[str, Any]:
                 break
             except (ValueError, IndexError):
                 continue
-    
+
     # 3. Extract Line Items
     logger.info(f"Attempting to parse line items...")
     # This regex tries to capture: [Description] [Optional Quantity] [Total Price]
@@ -114,7 +121,7 @@ def parse_invoice_text(text: str) -> Dict[str, Any]:
         total = float(match.group(3))
 
         quantity = int(quantity_str) if quantity_str else 1
-        
+
         # Heuristic to separate item name from other potential numbers in description
         # This is still a simplification, better would be to look for distinct columns
         item_name = re.sub(r'\s*\d+(\.\d{2})?(\s*x\s*\d+)?$', '', item_full_desc).strip()
@@ -137,12 +144,12 @@ def parse_invoice_text(text: str) -> Dict[str, Any]:
             }
             logger.debug(f"Primary pattern matched item: {item_data}") # Added debug log
             parsed_data["line_items"].append(item_data)
-    
+
     # If no line items were found with the complex regex, try a simpler one.
     # This refined simpler pattern looks for a line ending with a price and tries to extract quantity.
     if not parsed_data["line_items"]:
         logger.info("No line items found with primary pattern, trying refined simpler pattern.")
-        
+
         # New simpler line item pattern: Looks for any text followed by a price,
         # then tries to infer quantity from the beginning of the text part.
         simple_line_item_pattern = re.compile(
@@ -186,9 +193,162 @@ def parse_invoice_text(text: str) -> Dict[str, Any]:
                 parsed_data["line_items"].append(item_data)
 
     logger.info(f"Line items found: {len(parsed_data['line_items'])}")
-    
+
     # If total amount is still zero, calculate it from line items
     if parsed_data["total_amount"] == 0.0 and parsed_data["line_items"]:
         parsed_data["total_amount"] = sum(item['total'] for item in parsed_data["line_items"])
 
     return parsed_data
+
+
+def is_inventory_format(text: str) -> bool:
+    """
+    Checks if the text matches the inventory format with ITEM CODE, ITEM NAME, and BALANCE QUANTITY.
+    """
+    # Look for the header pattern or typical structure of the inventory format
+    text_upper = text.upper()
+
+    # Check if text contains all the key terms that indicate inventory format
+    has_item_code = 'ITEM CODE' in text_upper
+    has_item_name = 'ITEM NAME' in text_upper
+    has_balance_quantity = 'BALANCE' in text_upper and 'QUANTITY' in text_upper
+
+    # Additional check for "VALUATION REPORT" which appears in the example
+    has_valuation_report = 'VALUATION REPORT' in text_upper
+
+    # If we have the key headers or the valuation report indicator, it's likely inventory format
+    if (has_item_code and has_item_name and (has_balance_quantity or has_valuation_report)):
+        return True
+
+    # Look for the specific pattern in the text (could be comma-separated or in different lines)
+    lines = text.split('\n')
+    for line in lines:
+        line = line.strip()
+        if 'ITEM CODE' in line.upper() and 'ITEM NAME' in line.upper():
+            return True
+        # Check for lines that look like the example format: code, name, quantity
+        parts = line.split(',')
+        if len(parts) >= 3:
+            # Check if first part looks like an item code (alphanumeric), second is text, third is a number
+            code_part = parts[0].strip()
+            name_part = parts[1].strip()
+            qty_part = parts[2].strip()
+
+            # If the first part looks like a code (alphanumeric), second like a name, and third like a number
+            if code_part.replace(' ', '').isalnum() and name_part and qty_part.isdigit():
+                return True
+
+    return False
+
+
+def parse_inventory_format(text: str) -> List[Dict[str, Any]]:
+    """
+    Parses the inventory format with ITEM CODE, ITEM NAME, and BALANCE QUANTITY.
+    Handles both comma-separated format and multi-line format from OCR.
+    """
+    logger.info("Parsing inventory format...")
+    items = []
+
+    lines = text.split('\n')
+
+    # First, let's identify where the actual data starts by finding the headers
+    header_indices = {}
+    data_start_line = 0
+
+    for i, line in enumerate(lines):
+        line_upper = line.upper().strip()
+        if 'ITEM CODE' in line_upper:
+            header_indices['code'] = i
+        elif 'ITEM NAME' in line_upper:
+            header_indices['name'] = i
+        elif 'BALANCE' in line_upper and 'QUANTITY' in line_upper:
+            header_indices['quantity'] = i
+        elif 'BALANCE' in line_upper and 'QUANTI' in line_upper:  # Handle potential OCR misrecognition
+            header_indices['quantity'] = i
+
+    # If we have headers on separate lines, try to parse the following lines
+    if header_indices:
+        # Find the first line after all headers - this is where data starts
+        data_start_line = max(header_indices.values()) + 1
+
+        # Look for lines that contain the pattern of item code, name, and quantity
+        # Since OCR might have separated the columns across multiple lines or in different formats,
+        # we need to be flexible in our parsing
+        for i in range(data_start_line, len(lines)):
+            line = lines[i].strip()
+            if not line:
+                continue
+
+            # Check if this line contains comma-separated values
+            parts = line.split(',')
+            if len(parts) >= 3:
+                item_code = parts[0].strip()
+                item_name = parts[1].strip()
+                quantity_str = parts[2].strip()
+
+                # Skip if it's the total line
+                if ('Total' in item_name and item_code == '') or ('Total' in item_code):
+                    continue
+
+                # Validate that quantity is a number
+                try:
+                    quantity = int(quantity_str) if quantity_str and quantity_str.isdigit() else 0
+
+                    # Only add if we have a valid code and quantity
+                    if item_code and quantity >= 0:
+                        item_data = {
+                            "name": item_name if item_name else f"Item {item_code}",
+                            "quantity": quantity,
+                            "price": 0.0,  # Price is not provided in inventory format, so set to 0
+                            "total": 0.0   # Total is calculated as price * quantity, so also 0
+                        }
+
+                        items.append(item_data)
+                        logger.debug(f"Inventory item parsed: {item_data}")
+
+                except ValueError:
+                    # If quantity is not a number, skip this line
+                    continue
+            else:
+                # Try to parse as multi-column format where each column might be in the same line
+                # Pattern: Some alphanumeric code, followed by text, followed by a number
+                # Example: "00000191 17 PM 512 1" or similar
+                words = line.split()
+                if len(words) >= 3:
+                    # Look for patterns like: [code] [name...] [quantity]
+                    # The code is likely alphanumeric, the last element is likely a number (quantity)
+                    possible_code = words[0]
+                    possible_quantity_str = words[-1] if words[-1].isdigit() else None
+
+                    if possible_code.isalnum() and possible_quantity_str:
+                        item_code = possible_code
+                        quantity = int(possible_quantity_str)
+                        # The name would be the middle elements
+                        item_name_parts = words[1:-1]  # Exclude first (code) and last (quantity)
+                        item_name = ' '.join(item_name_parts) if item_name_parts else f"Item {item_code}"
+
+                        # Skip if it's the total line
+                        if 'Total' in item_name or 'TOTAL' in item_name.upper():
+                            continue
+
+                        item_data = {
+                            "name": item_name,
+                            "quantity": quantity,
+                            "price": 0.0,
+                            "total": 0.0
+                        }
+
+                        items.append(item_data)
+                        logger.debug(f"Inventory item parsed from multi-column: {item_data}")
+
+    logger.info(f"Parsed {len(items)} inventory items")
+    return items
+
+
+def calculate_inventory_total(items: List[Dict[str, Any]]) -> float:
+    """
+    Calculates the total amount for inventory items (typically the sum of quantities since prices are not provided).
+    """
+    # Since inventory format doesn't include prices, we'll return the total quantity
+    # Or we could return 0 since prices are not available
+    return sum(item['quantity'] for item in items)

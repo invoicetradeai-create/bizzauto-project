@@ -168,37 +168,68 @@ class SendMessageRequest(BaseModel):
 
 @router.post("/send-meta-whatsapp")
 async def send_meta_whatsapp_message(
-    request: SendMessageRequest, 
-    response: Response, 
+    request: SendMessageRequest,
+    response: Response,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
     try:
-        # 1. Send Message via Meta API
-        api_response = await send_reply(to=request.to, data=request.message_data)
-        
-        if api_response and "messages" in api_response:
-            # 2. Save to Database (so it shows in the table)
-            try:
-                message_body = request.message_data.get("text", {}).get("body", "") if isinstance(request.message_data, dict) else str(request.message_data)
-                
-                new_message = PydanticScheduledWhatsappMessage(
-                    company_id=user.company_id,
-                    phone=request.to,
-                    message=message_body,
-                    scheduled_at=datetime.utcnow(),
-                    status='sent'
-                )
-                create_scheduled_whatsapp_message(db, new_message, user.id)
-                print(f"✅ Immediate message saved to DB for {request.to}")
-            except Exception as db_e:
-                print(f"⚠️ Failed to save immediate message to DB: {db_e}")
-                traceback.print_exc() # Add full traceback
-            return {"success": True}
-        else:
+        # 1. Prepare message for database logging
+        message_body = request.message_data.get("text", {}).get("body", "") if isinstance(request.message_data, dict) else str(request.message_data)
+
+        # 2. Save to Database first as 'pending' (so user sees it in their list immediately)
+        try:
+            new_message = PydanticScheduledWhatsappMessage(
+                company_id=user.company_id,
+                phone=request.to,
+                message=message_body,
+                scheduled_at=datetime.utcnow(),
+                status='pending'  # Will update to 'sent' after successful delivery
+            )
+            created_message = create_scheduled_whatsapp_message(db, new_message, user.id)
+            print(f"✅ Message saved to DB as pending for {request.to}")
+        except Exception as db_e:
+            print(f"⚠️ Failed to save message to DB initially: {db_e}")
+            traceback.print_exc()
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-            print(f"❌ Failed to send message via Meta API: {api_response}") # Log API response
-            return {"error": "Failed to send message"}
+            return {"error": "Failed to save message to database"}
+
+        # 3. Send Message via Meta API (this might take time, so do it after DB save)
+        api_response = await send_reply(to=request.to, data=request.message_data)
+
+        if api_response and "messages" in api_response:
+            # Update status to 'sent' in database
+            try:
+                from sql_models import ScheduledWhatsappMessage
+                db_message = db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.id == created_message.id).first()
+                if db_message:
+                    db_message.status = 'sent'
+                    db.commit()
+                    print(f"✅ Message status updated to 'sent' for {request.to}")
+            except Exception as update_e:
+                print(f"⚠️ Failed to update message status: {update_e}")
+                traceback.print_exc()
+
+            return {"success": True, "message_id": api_response.get("messages", [{}])[0].get("id") if api_response.get("messages") else None}
+        else:
+            # Update status to 'failed' in database
+            try:
+                from sql_models import ScheduledWhatsappMessage
+                db_message = db.query(ScheduledWhatsappMessage).filter(ScheduledWhatsappMessage.id == created_message.id).first()
+                if db_message:
+                    db_message.status = 'failed'
+                    db.commit()
+                    print(f"✅ Message status updated to 'failed' for {request.to}")
+            except Exception as update_e:
+                print(f"⚠️ Failed to update message status to failed: {update_e}")
+                traceback.print_exc()
+
+            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            error_msg = "Failed to send message via Meta API"
+            if api_response is None:
+                error_msg = "WhatsApp API credentials not configured properly or API request failed"
+            print(f"❌ {error_msg}: {api_response}") # Log API response
+            return {"error": error_msg}
     except Exception as e:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         print(f"❌ Error in send_meta_whatsapp_message: {e}") # Log actual error

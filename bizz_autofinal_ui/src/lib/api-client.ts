@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseURL = process.env.NODE_ENV === 'development' ? "http://127.0.0.1:8000" : (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000");
+const baseURL = process.env.NODE_ENV === 'development' ? "http://127.0.0.1:8001" : (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001");
 console.log("🚀 API Client Base URL:", baseURL);
 
 const apiClient = axios.create({

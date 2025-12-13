@@ -16,7 +16,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[PydanticCompany])
 @router.get("", response_model=List[PydanticCompany])
-def read_companies(skip: int = 0, limit: int = 100, db: Session = Depends(set_rls_context)):
+def read_companies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     companies = get_companies(db, skip=skip, limit=limit)
     return companies
 

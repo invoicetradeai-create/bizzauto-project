@@ -19,14 +19,14 @@ logger = logging.getLogger(__name__)
 env_path = Path(__file__).parent / '.env'
 if env_path.exists():
     load_dotenv(dotenv_path=env_path, override=True)
-    logger.info(f"✅ [WhatsApp Agent] Loaded .env from {env_path}")
+    logger.info(f"[OK] [WhatsApp Agent] Loaded .env from {env_path}")
 else:
-    logger.warning(f"⚠️ [WhatsApp Agent] .env file not found at {env_path}")
+    logger.warning(f"[WARN] [WhatsApp Agent] .env file not found at {env_path}")
 
 api_key = os.environ.get("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
-    logger.info("✅ [WhatsApp Agent] Gemini API Configured")
+    logger.info("[OK] [WhatsApp Agent] Gemini API Configured")
 else:
     logger.error("❌ [WhatsApp Agent] GEMINI_API_KEY not found in environment!")
 
@@ -113,15 +113,15 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
     # Reload API Key just in case
     global api_key
     if not api_key:
-        logger.warning("⚠️ GEMINI_API_KEY missing in global scope. Reloading from env...")
+        logger.warning("[WARN] GEMINI_API_KEY missing in global scope. Reloading from env...")
         load_dotenv(dotenv_path=env_path, override=True)
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             genai.configure(api_key=api_key)
-            logger.info("✅ GEMINI_API_KEY recovered.")
+            logger.info("[OK] GEMINI_API_KEY recovered.")
         else:
             logger.error("❌ CRITICAL: GEMINI_API_KEY still missing.")
-            return "⚠️ Service Error: AI configuration missing. Please contact support."
+            return "[WARN] Service Error: AI configuration missing. Please contact support."
 
     try:
         # 1. Create Chat Session if not exists
@@ -192,7 +192,7 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
         response = await asyncio.to_thread(chat.send_message, message)
         
         if not response.text:
-             logger.warning(f"⚠️ Empty response text. Parts: {response.parts}")
+             logger.warning(f"[WARN] Empty response text. Parts: {response.parts}")
              return "I'm having trouble finding the right words. Could you rephrase that?"
 
         return response.text
@@ -201,4 +201,4 @@ async def run_whatsapp_agent(message: str, phone_number: str, user_id: UUID | No
         logger.error(f"❌ EXCEPTION in run_whatsapp_agent for {phone_number}: {e}")
         traceback.print_exc()
         # DISTINCT ERROR MESSAGE TO VERIFY CODE UPDATE
-        return f"⚠️ SYSTEM ALERT: The AI Agent encountered an error: {str(e)}"
+        return f"[WARN] SYSTEM ALERT: The AI Agent encountered an error: {str(e)}"

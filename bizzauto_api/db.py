@@ -9,12 +9,12 @@ supabase: Optional[Client] = None
 if url and key:
     try:
         supabase = create_client(url, key)
-        print("✅ Supabase (db.py) connected")
+        print("[OK] Supabase (db.py) connected")
     except Exception as e:
-        print(f"⚠️ Supabase (db.py) connection failed: {e}")
+        print(f"[WARN] Supabase (db.py) connection failed: {e}")
         supabase = None
 else:
-    print("⚠️ SUPABASE_URL or SUPABASE_KEY not set in db.py")
+    print("[WARN] SUPABASE_URL or SUPABASE_KEY not set in db.py")
 
 def get_supabase_client() -> Client:
     """Get Supabase client or raise error"""
