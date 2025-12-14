@@ -42,7 +42,7 @@ export default function OcrUploadCard({ companyId, onClose, onUploadSuccess }: O
     }
 
     setStatus("uploading");
-    setMessage("Processing invoice...");
+    setMessage("Processing document...");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -89,17 +89,17 @@ export default function OcrUploadCard({ companyId, onClose, onUploadSuccess }: O
       <Card className="w-full max-w-lg">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Upload and Process Invoice</CardTitle>
+            <CardTitle>Upload and Process Document</CardTitle>
             <X className="cursor-pointer" onClick={onClose} />
           </div>
           <CardDescription>
-            Upload a PDF or image file of an invoice. The system will automatically extract the details.
+            Upload a PDF or image file of an invoice or inventory list. The system will automatically extract the items and update your inventory.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid w-full max-w-sm items-center gap-1.5">
-              <Label htmlFor="invoice-file">Invoice File</Label>
+              <Label htmlFor="invoice-file">Document File</Label>
               <Input 
                 id="invoice-file" 
                 type="file" 

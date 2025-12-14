@@ -670,6 +670,7 @@ def create_invoice_from_ocr(db: Session, ocr_data: dict, company_id: UUID, user_
     """
     Creates an invoice, its items, and updates product stock from parsed OCR data.
     This function should be executed within a transaction.
+    If products don't exist in inventory, they will be created with extracted data.
     """
     processed_items_count = 0
     try:
@@ -700,8 +701,26 @@ def create_invoice_from_ocr(db: Session, ocr_data: dict, company_id: UUID, user_
             product = find_product_by_name(db, item_data["name"], company_id)
 
             if not product:
-                logger.warning(f"Product not found: '{item_data['name']}'. Skipping item.")        
-                continue
+                # Product doesn't exist, create a new one
+                logger.info(f"Product not found: '{item_data['name']}'. Creating new product.")
+
+                # Create a new product with extracted data
+                new_product = Product(
+                    name=item_data["name"],
+                    sku=f"SKU_{len(item_data['name'])}_{hash(item_data['name']) % 10000}",  # Generate a basic SKU
+                    category="Imported",  # Default category for imported items
+                    purchase_price=item_data.get("price", 0.0),  # Use extracted price as purchase price
+                    sale_price=item_data.get("price", 0.0) * 1.2,  # Set sale price as 20% markup
+                    stock_quantity=item_data.get("quantity", 0),  # Use extracted quantity
+                    unit="pcs",  # Default unit
+                    low_stock_alert=5,  # Default low stock alert
+                    company_id=company_id,
+                    user_id=user_id
+                )
+                db.add(new_product)
+                db.flush()  # Flush to get the new product ID
+                product = new_product
+                logger.info(f"Created new product: {product.name} with ID: {product.id}")
 
             # Create the invoice item
             db_invoice_item = InvoiceItem(
@@ -715,11 +734,32 @@ def create_invoice_from_ocr(db: Session, ocr_data: dict, company_id: UUID, user_
             db.add(db_invoice_item)
 
             # 3. Update product stock
+            # For inventory items (like stock reports), we should ADD to stock, not subtract
+            # For sales invoices, we would subtract - but for inventory imports we add
+            # We determine the type based on whether this appears to be an inventory report vs. sales invoice
+            is_inventory_import = any(keyword in item_data.get("name", "").upper() for keyword in ["BALANCE", "STOCK", "INVENTORY"])
+
+            # Also check if this looks like an inventory document based on OCR processing context
+            # Inventory documents typically have price=0 or very low prices, or no prices at all
+            # If price is 0, it's likely an inventory document (stock report)
+            # If price > 0 and total doesn't match price*quantity, it might be an inventory doc with value
+            likely_inventory_doc = item_data.get("price", 0) == 0
+
             if product.stock_quantity is not None:
-                new_stock = product.stock_quantity - item_data["quantity"]
-                if new_stock < 0:
-                    logger.warning(f"Stock for product {product.name} ({product.id}) is going negative. Setting to 0.")
-                    new_stock = 0
+                # For inventory format (stock reports), add the quantity
+                # For sales invoices, subtract the quantity
+                if is_inventory_import or likely_inventory_doc:
+                    # This is likely an inventory import, so we add to existing stock
+                    new_stock = product.stock_quantity + item_data["quantity"]
+                    logger.info(f"Adding {item_data['quantity']} to stock for {product.name} (inventory import)")
+                else:
+                    # This is a sales invoice, so we subtract from stock
+                    new_stock = product.stock_quantity - item_data["quantity"]
+                    if new_stock < 0:
+                        logger.warning(f"Stock for product {product.name} ({product.id}) is going negative. Setting to 0.")
+                        new_stock = 0
+                    logger.info(f"Subtracting {item_data['quantity']} from stock for {product.name} (sales)")
+
                 product.stock_quantity = new_stock
 
             processed_items_count += 1
