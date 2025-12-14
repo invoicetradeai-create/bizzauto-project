@@ -95,29 +95,42 @@ async def startup_event():
 
     # Google Cloud Vision API Credentials Initialization
     try:
-        # Explicitly set the correct path using a raw string to avoid escape sequence issues
-        correct_path = r"C:\Users\YOusuf Traders\Documents\quarter-4\BizzAuto_new\vision-api.json"
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = correct_path
-        logging.info(f"✅ Explicitly set GOOGLE_APPLICATION_CREDENTIALS to: {correct_path}")
-
-        if os.path.exists(correct_path):
-             logging.info("✅ Credentials file verified to exist at the specified path.")
-        else:
-             logging.error(f"❌ Credentials file NOT found at: {correct_path}")
-
-        # Fallback to JSON if explicit path somehow fails (though unlikely if file exists)
-        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-            if not creds_json:
-                logging.warning("⚠️ GOOGLE_APPLICATION_CREDENTIALS_JSON not set. OCR features will not work.")
+        # Check if GOOGLE_APPLICATION_CREDENTIALS is already set (e.g., on Render)
+        if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            credentials_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            if os.path.exists(credentials_path):
+                logging.info(f"✅ Using existing GOOGLE_APPLICATION_CREDENTIALS: {credentials_path}")
             else:
-                creds_dict = json.loads(creds_json)
-                creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-                # Use a temporary file path that works in most environments
-                with open("/tmp/gcp_creds.json", "w") as f:
-                    json.dump(creds_dict, f)
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/gcp_creds.json"
-                logging.info("✅ Google Cloud Vision API credentials configured from JSON")
+                logging.warning(f"⚠️ GOOGLE_APPLICATION_CREDENTIALS is set but file not found: {credentials_path}")
+        else:
+            # Try to find credentials file in common locations
+            possible_paths = [
+                "vision-api.json",  # Root of project (for Render)
+                "../vision-api.json",  # Parent directory
+                r"C:\Users\YOusuf Traders\Documents\quarter-4\BizzAuto_new\vision-api.json"  # Local development
+            ]
+
+            credentials_found = False
+            for path in possible_paths:
+                if os.path.exists(path):
+                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path
+                    logging.info(f"✅ Found and set GOOGLE_APPLICATION_CREDENTIALS to: {path}")
+                    credentials_found = True
+                    break
+
+            # Fallback to JSON environment variable if no file found
+            if not credentials_found:
+                creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+                if not creds_json:
+                    logging.warning("⚠️ No credentials file found and GOOGLE_APPLICATION_CREDENTIALS_JSON not set. OCR features will not work.")
+                else:
+                    creds_dict = json.loads(creds_json)
+                    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+                    # Use a temporary file path that works in most environments
+                    with open("/tmp/gcp_creds.json", "w") as f:
+                        json.dump(creds_dict, f)
+                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/gcp_creds.json"
+                    logging.info("✅ Google Cloud Vision API credentials configured from JSON environment variable")
     except (ValueError, KeyError, json.JSONDecodeError, OSError) as e:
         logging.error(f"❌ Error configuring Google Cloud Vision API: {e}")
 

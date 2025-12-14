@@ -20,15 +20,19 @@ def extract_text_from_file(file_content: bytes) -> str:
         # Check if GOOGLE_APPLICATION_CREDENTIALS is set
         credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         if credentials_path:
-            logger.info(f"Using credentials from GOOGLE_APPLICATION_CREDENTIALS: {credentials_path}")
+            if os.path.exists(credentials_path):
+                logger.info(f"Using credentials from GOOGLE_APPLICATION_CREDENTIALS: {credentials_path}")
+            else:
+                logger.error(f"❌ Credentials file not found at: {credentials_path}")
+                raise Exception(f"Google Vision API credentials file not found. Please ensure the file exists at the specified path or set GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable.")
         else:
             logger.warning("GOOGLE_APPLICATION_CREDENTIALS environment variable not set. Attempting to use default credentials.")
 
         client = vision.ImageAnnotatorClient()
         logger.info("Google Vision API client initialized successfully.")
     except DefaultCredentialsError as e:
-        logger.error(f"❌ Google Vision API credential error: {e}. Please ensure GOOGLE_APPLICATION_CREDENTIALS is set correctly or default credentials are available.")
-        raise Exception(f"Google Vision API credential error: {e}")
+        logger.error(f"❌ Google Vision API credential error. Please ensure GOOGLE_APPLICATION_CREDENTIALS points to a valid credentials file or set GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable.")
+        raise Exception(f"Google Vision API credential error. Please check your credentials configuration on Render.")
     except Exception as e:
         logger.error(f"❌ Unexpected error initializing Google Vision API client: {e}")
         raise Exception(f"Google Vision API client initialization failed: {e}")
