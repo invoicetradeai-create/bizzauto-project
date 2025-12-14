@@ -3,7 +3,7 @@ uvicorn[standard]==0.24.0
 sqlalchemy==2.0.31
 redis==5.2.0
 python-dotenv==1.0.0
-supabase==1.0.1
+supabase==2.15.0
 google-cloud-vision==3.11.0
 google-cloud-storage==2.10.0
 pytest==8.3.3

@@ -94,12 +94,14 @@ async def upload_invoice(
         
         logger.info(f"Uploading to Supabase bucket '{BUCKET_NAME}' at path: {file_path}...")
         supabase_client.storage.from_(BUCKET_NAME).upload(
-            file_path, file_content, {"content-type": file.content_type}
+            path=file_path,
+            file=file_content,
+            file_options={"content-type": file.content_type}
         )
-        
+
         # Generate a temporary signed URL for secure access (expires in 1 hour)
         signed_url_response = supabase_client.storage.from_(BUCKET_NAME).create_signed_url(file_path, 3600)
-        file_url = signed_url_response['signedURL']
+        file_url = signed_url_response.get('signedURL') or signed_url_response.get('signed_url')
         logger.info(f"File uploaded successfully. Signed URL generated.")
 
         # 3. Use Google Vision API for OCR text extraction
